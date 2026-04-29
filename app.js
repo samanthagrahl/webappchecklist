@@ -18,6 +18,7 @@ const users = [
   { username: "mohammed", password: "123", role: "employee", label: "Mohammed" }
 ];
 
+let checkpointCatalog = loadCheckpointCatalog();
 let submissions = loadSubmissions();
 let currentRole = null;
 let activeChecklistId = null;
@@ -26,7 +27,6 @@ let currentSession = loadSession();
 let currentMailPreviewUrl = null;
 let staffSchedule = loadSchedule();
 let customerDb = loadCustomerDb();
-let checkpointCatalog = loadCheckpointCatalog();
 let selectedCalendarDate = toIsoDate(new Date());
 let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let activeSection = "checklist";
