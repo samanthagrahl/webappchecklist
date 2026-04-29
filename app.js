@@ -258,11 +258,11 @@ function getStatusLabel(status) {
     submitted: "Zur Prüfung",
     approved: "Freigegeben"
   };
-  return labels[status] ?? status;
+  return labels[status] != null ? labels[status] : status;
 }
 
 function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+  return String(value != null ? value : "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -334,7 +334,7 @@ function getEmployeeUsers() {
 }
 
 function getAvailableSections() {
-  const isChef = currentSession?.username === "chef";
+  const isChef = currentSession && currentSession.username === "chef";
   return isChef ? ["checklist", "customerDb", "calendar", "worktime", "checkpoints"] : ["checklist", "calendar"];
 }
 
@@ -345,7 +345,7 @@ function setActiveSection(section) {
 }
 
 function renderSectionVisibility() {
-  const isChef = currentSession?.username === "chef";
+  const isChef = currentSession && currentSession.username === "chef";
   el.customerDbTab.classList.toggle("hidden", !isChef);
   el.worktimeTab.classList.toggle("hidden", !isChef);
   el.checkpointTab.classList.toggle("hidden", !isChef);
@@ -418,7 +418,7 @@ function logout() {
 function renderItemPhoto(node, photo) {
   const preview = node.querySelector(".item-photo-preview");
   preview.innerHTML = "";
-  if (!photo?.data) return;
+  if (!photo || !photo.data) return;
   const image = document.createElement("img");
   image.src = photo.data;
   image.alt = photo.name || "Prüfpunkt-Bild";
@@ -439,7 +439,7 @@ function addChecklistItem(text = "", checked = false, comment = "", photo = null
   renderItemPhoto(node, node._itemPhoto);
   photoTrigger.addEventListener("click", () => photoInput.click());
   photoInput.addEventListener("change", () => {
-    const file = photoInput.files?.[0];
+    const file = photoInput.files && photoInput.files[0];
     if (!file || !file.type.startsWith("image/")) return;
     const reader = new FileReader();
     reader.onload = () => {
@@ -533,14 +533,15 @@ function buildSyncedChecklistItems(existingItems = [], nextCheckpointNames = [],
 
   return nextCheckpointNames.map((name) => {
     const directMatch = existingByName.get(name);
-    const renamedFrom = Object.entries(renameMap).find(([, nextName]) => nextName === name)?.[0];
+    const renamedEntry = Object.entries(renameMap).find(([, nextName]) => nextName === name);
+    const renamedFrom = renamedEntry ? renamedEntry[0] : null;
     const previousItem = directMatch || (renamedFrom ? existingByName.get(renamedFrom) : null);
 
     return {
-      checked: previousItem?.checked ?? false,
+      checked: previousItem && previousItem.checked != null ? previousItem.checked : false,
       text: name,
-      comment: previousItem?.comment || "",
-      photo: previousItem?.photo || null
+      comment: previousItem && previousItem.comment ? previousItem.comment : "",
+      photo: previousItem && previousItem.photo ? previousItem.photo : null
     };
   });
 }
@@ -576,7 +577,7 @@ function syncDraftSubmissionsForCustomer(customerId, nextCheckpointNames, rename
 
 function resetCheckpointForm() {
   activeCheckpointEditIndex = -1;
-  el.checkpointForm?.reset();
+  if (el.checkpointForm) el.checkpointForm.reset();
   if (el.checkpointSaveButton) {
     el.checkpointSaveButton.textContent = "Prüfpunkt speichern";
   }
@@ -605,13 +606,15 @@ function renderCheckpointManager() {
         <button class="danger-button" type="button" data-delete-checkpoint="${index}">Löschen</button>
       </div>
     `;
-    row.querySelector("[data-edit-checkpoint]")?.addEventListener("click", () => {
+    const editButton = row.querySelector("[data-edit-checkpoint]");
+    if (editButton) editButton.addEventListener("click", () => {
       activeCheckpointEditIndex = index;
       el.checkpointName.value = item;
       el.checkpointSaveButton.textContent = "Prüfpunkt aktualisieren";
       el.checkpointName.focus();
     });
-    row.querySelector("[data-delete-checkpoint]")?.addEventListener("click", () => {
+    const deleteButton = row.querySelector("[data-delete-checkpoint]");
+    if (deleteButton) deleteButton.addEventListener("click", () => {
       deleteCheckpoint(index);
     });
     el.checkpointList.appendChild(row);
@@ -686,31 +689,31 @@ function collectForm(status) {
 
   const now = new Date().toISOString();
   const existing = submissions.find((entry) => entry.id === activeChecklistId);
-  const inferredCustomerId = activeCustomerId || existing?.customerId || resolveCustomerIdByName(el.customerName.value.trim());
+  const inferredCustomerId = activeCustomerId || (existing ? existing.customerId : "") || resolveCustomerIdByName(el.customerName.value.trim());
 
   return {
     id: activeChecklistId || crypto.randomUUID(),
     customerName: el.customerName.value.trim(),
-    customerEmail: existing?.customerEmail || "",
+    customerEmail: existing ? existing.customerEmail || "" : "",
     jobTitle: el.customerName.value.trim(),
-    employeeName: currentSession?.label || existing?.employeeName || "Mitarbeiter",
-    employeeUsername: currentSession?.role === "employee" ? currentSession.username : (existing?.employeeUsername || ""),
+    employeeName: (currentSession ? currentSession.label : "") || (existing ? existing.employeeName || "" : "") || "Mitarbeiter",
+    employeeUsername: currentSession && currentSession.role === "employee" ? currentSession.username : (existing ? existing.employeeUsername || "" : ""),
     employeeComment: el.employeeComment.value.trim(),
     attendance: {
-      come: el.comeTimeDisplay?.textContent === "-" ? "" : el.comeTimeDisplay?.textContent || "",
-      breakStart: el.breakStartTimeDisplay?.textContent?.replace("Start: ", "") === "-" ? "" : (el.breakStartTimeDisplay?.textContent?.replace("Start: ", "") || ""),
-      breakEnd: el.breakEndTimeDisplay?.textContent?.replace("Ende: ", "") === "-" ? "" : (el.breakEndTimeDisplay?.textContent?.replace("Ende: ", "") || ""),
-      leave: el.leaveTimeDisplay?.textContent === "-" ? "" : el.leaveTimeDisplay?.textContent || ""
+      come: !el.comeTimeDisplay || el.comeTimeDisplay.textContent === "-" ? "" : el.comeTimeDisplay.textContent || "",
+      breakStart: !el.breakStartTimeDisplay || el.breakStartTimeDisplay.textContent.replace("Start: ", "") === "-" ? "" : (el.breakStartTimeDisplay.textContent.replace("Start: ", "") || ""),
+      breakEnd: !el.breakEndTimeDisplay || el.breakEndTimeDisplay.textContent.replace("Ende: ", "") === "-" ? "" : (el.breakEndTimeDisplay.textContent.replace("Ende: ", "") || ""),
+      leave: !el.leaveTimeDisplay || el.leaveTimeDisplay.textContent === "-" ? "" : el.leaveTimeDisplay.textContent || ""
     },
-    assignmentId: activeAssignmentId || existing?.assignmentId || "",
+    assignmentId: activeAssignmentId || (existing ? existing.assignmentId || "" : ""),
     customerId: inferredCustomerId || "",
     lockedCustomerName,
-    bossComment: existing?.bossComment || "",
+    bossComment: existing ? existing.bossComment || "" : "",
     status,
-    createdAt: existing?.createdAt || now,
-    submittedAt: status === "submitted" ? now : existing?.submittedAt || "",
-    approvedAt: existing?.approvedAt || "",
-    emailSentAt: existing?.emailSentAt || "",
+    createdAt: existing ? existing.createdAt || now : now,
+    submittedAt: status === "submitted" ? now : (existing ? existing.submittedAt || "" : ""),
+    approvedAt: existing ? existing.approvedAt || "" : "",
+    emailSentAt: existing ? existing.emailSentAt || "" : "",
     photos: uploadedPhotos,
     items
   };
@@ -723,7 +726,7 @@ function saveChecklist(status, options = {}) {
     showToast("Neue Checkliste bitte über den Kalender-Einsatz starten.");
     return;
   }
-  if (currentRole === "employee" && existing?.status === "approved") {
+  if (currentRole === "employee" && existing && existing.status === "approved") {
     showToast("Freigegebene Checklisten können nicht mehr geändert werden.");
     return;
   }
@@ -755,7 +758,7 @@ function saveChecklist(status, options = {}) {
 function editChecklist(id) {
   const entry = submissions.find((item) => item.id === id);
   if (!entry) return;
-  if (currentRole === "employee" && entry.employeeUsername && entry.employeeUsername !== currentSession?.username) {
+  if (currentRole === "employee" && entry.employeeUsername && (!currentSession || entry.employeeUsername !== currentSession.username)) {
     showToast("Kein Zugriff auf diese Checkliste.");
     return;
   }
@@ -770,14 +773,14 @@ function editChecklist(id) {
   if (el.employeeName) el.employeeName.value = entry.employeeName;
   lockedCustomerName = entry.lockedCustomerName || "";
   el.customerName.readOnly = currentRole === "employee" || Boolean(lockedCustomerName);
-  el.comeTimeDisplay.textContent = entry.attendance?.come || "-";
-  el.breakStartTimeDisplay.textContent = `Start: ${entry.attendance?.breakStart || "-"}`;
-  el.breakEndTimeDisplay.textContent = `Ende: ${entry.attendance?.breakEnd || "-"}`;
-  el.leaveTimeDisplay.textContent = entry.attendance?.leave || "-";
-  el.comeButton.disabled = Boolean(entry.attendance?.come);
-  el.breakStartButton.disabled = Boolean(entry.attendance?.breakStart);
-  el.breakEndButton.disabled = Boolean(entry.attendance?.breakEnd);
-  el.leaveButton.disabled = Boolean(entry.attendance?.leave);
+  el.comeTimeDisplay.textContent = entry.attendance && entry.attendance.come ? entry.attendance.come : "-";
+  el.breakStartTimeDisplay.textContent = `Start: ${entry.attendance && entry.attendance.breakStart ? entry.attendance.breakStart : "-"}`;
+  el.breakEndTimeDisplay.textContent = `Ende: ${entry.attendance && entry.attendance.breakEnd ? entry.attendance.breakEnd : "-"}`;
+  el.leaveTimeDisplay.textContent = entry.attendance && entry.attendance.leave ? entry.attendance.leave : "-";
+  el.comeButton.disabled = Boolean(entry.attendance && entry.attendance.come);
+  el.breakStartButton.disabled = Boolean(entry.attendance && entry.attendance.breakStart);
+  el.breakEndButton.disabled = Boolean(entry.attendance && entry.attendance.breakEnd);
+  el.leaveButton.disabled = Boolean(entry.attendance && entry.attendance.leave);
   el.employeeComment.value = entry.employeeComment;
   el.checklistItems.innerHTML = "";
   entry.items.forEach((item) => addChecklistItem(item.text, item.checked, item.comment || "", item.photo || null));
@@ -857,7 +860,7 @@ function approveChecklist(id) {
   const entry = submissions.find((item) => item.id === id);
   if (!entry) return;
   const commentField = document.getElementById("bossComment");
-  entry.bossComment = commentField?.value.trim() || entry.bossComment;
+  entry.bossComment = commentField ? commentField.value.trim() || entry.bossComment : entry.bossComment;
   entry.status = "approved";
   entry.approvedAt = new Date().toISOString();
   sendCustomerEmail(entry);
@@ -929,7 +932,7 @@ function buildReportHtml(entry) {
           <div>
             <span>${escapeHtml(item.text)}</span>
             ${item.comment ? `<small class="item-note">Kommentar: ${escapeHtml(item.comment)}</small>` : ""}
-            ${item.photo?.data ? `<img src="${item.photo.data}" alt="${escapeHtml(item.photo.name || "Prüfpunkt-Bild")}" />` : ""}
+            ${item.photo && item.photo.data ? `<img src="${item.photo.data}" alt="${escapeHtml(item.photo.name || "Prüfpunkt-Bild")}" />` : ""}
           </div>
         </li>
       `).join("")}
@@ -1065,8 +1068,10 @@ function renderReview() {
   `;
 
   document.getElementById("deleteButton").addEventListener("click", () => deleteChecklist(entry.id));
-  document.getElementById("approveButton")?.addEventListener("click", () => approveChecklist(entry.id));
-  document.getElementById("reopenButton")?.addEventListener("click", () => reopenChecklist(entry.id));
+  const approveButton = document.getElementById("approveButton");
+  if (approveButton) approveButton.addEventListener("click", () => approveChecklist(entry.id));
+  const reopenButton = document.getElementById("reopenButton");
+  if (reopenButton) reopenButton.addEventListener("click", () => reopenChecklist(entry.id));
 
   const summary = `${done}/${entry.items.length} Prüfpunkte erledigt`;
   el.emailStatus.innerHTML = `<span class="dot"></span>${summary}`;
@@ -1076,7 +1081,7 @@ function renderLists() {
   const filter = el.statusFilter.value;
   const customerQuery = el.bossCustomerFilter.value.trim().toLowerCase();
   const projectQuery = el.bossProjectFilter.value.trim().toLowerCase();
-  const isChef = currentSession?.username === "chef";
+  const isChef = currentSession && currentSession.username === "chef";
   const filteredByStatus = filter === "all" ? submissions : submissions.filter((entry) => entry.status === filter);
   const filteredForBoss = isChef
     ? filteredByStatus.filter((entry) => {
@@ -1085,7 +1090,7 @@ function renderLists() {
       return matchesCustomer && matchesProject;
     })
     : filteredByStatus;
-  const employeeEntries = currentSession?.role === "employee"
+  const employeeEntries = currentSession && currentSession.role === "employee"
     ? submissions.filter((entry) => (
       entry.employeeUsername
         ? entry.employeeUsername === currentSession.username
@@ -1174,7 +1179,7 @@ function formatMinutes(totalMinutes) {
 }
 
 function renderWorktimeSummary() {
-  if (!el.worktimeList || currentSession?.username !== "chef") return;
+  if (!el.worktimeList || !currentSession || currentSession.username !== "chef") return;
 
   if (!el.worktimeDate.value) {
     el.worktimeDate.value = toIsoDate(new Date());
@@ -1260,15 +1265,20 @@ function renderCustomerDb() {
         <button class="danger-button" type="button" data-id="${entry.id}">Löschen</button>
       </div>
     `;
-    row.querySelector('[data-id]')?.addEventListener("click", () => deleteCustomerEntry(entry.id));
-    row.querySelector('[data-edit-id]')?.addEventListener("click", () => startEditCustomerEntry(entry.id));
-    row.querySelector('[data-open-history]')?.addEventListener("click", () => {
-      const selectedId = row.querySelector(`[data-history-select="${entry.id}"]`)?.value;
+    const deleteCustomerButton = row.querySelector('[data-id]');
+    if (deleteCustomerButton) deleteCustomerButton.addEventListener("click", () => deleteCustomerEntry(entry.id));
+    const editCustomerButton = row.querySelector('[data-edit-id]');
+    if (editCustomerButton) editCustomerButton.addEventListener("click", () => startEditCustomerEntry(entry.id));
+    const openHistoryButton = row.querySelector('[data-open-history]');
+    if (openHistoryButton) openHistoryButton.addEventListener("click", () => {
+      const historySelect = row.querySelector(`[data-history-select="${entry.id}"]`);
+      const selectedId = historySelect ? historySelect.value : "";
       if (!selectedId) return;
       setActiveSection("checklist");
       selectForReview(selectedId);
     });
-    row.querySelector('[data-toggle-checkpoints]')?.addEventListener("click", (event) => {
+    const toggleCheckpointsButton = row.querySelector('[data-toggle-checkpoints]');
+    if (toggleCheckpointsButton) toggleCheckpointsButton.addEventListener("click", (event) => {
       const listEl = row.querySelector(`[data-checkpoint-list="${entry.id}"]`);
       if (!listEl) return;
       listEl.classList.toggle("hidden");
@@ -1368,7 +1378,7 @@ function createChecklistFromAssignment(entry) {
   setActiveSection("checklist");
   el.customerName.value = target.customerName || "";
   const customer = customerDb.find((item) => item.id === (target.customerId || activeCustomerId));
-  const customerSpecificItems = Array.isArray(customer?.checkpoints) ? customer.checkpoints : [];
+  const customerSpecificItems = customer && Array.isArray(customer.checkpoints) ? customer.checkpoints : [];
   if (!customerSpecificItems.length) {
     showToast("Für diesen Kunden sind keine Prüfpunkte hinterlegt.");
     employeeChecklistUnlocked = false;
@@ -1397,7 +1407,7 @@ function resolveCustomerIdByName(customerName) {
   const target = customerName.trim().toLowerCase();
   if (!target) return "";
   const match = customerDb.find((customer) => `${customer.firstName} ${customer.lastName}`.trim().toLowerCase() === target);
-  return match?.id || "";
+  return match ? match.id || "" : "";
 }
 
 function markAssignmentInProgress() {
@@ -1456,8 +1466,8 @@ function renderCalendarStaff() {
   const entries = currentRole === "employee"
     ? entriesForDate.filter((entry) => (
       entry.employeeUsername
-        ? entry.employeeUsername === currentSession?.username
-        : entry.name === currentSession?.label
+        ? entry.employeeUsername === (currentSession ? currentSession.username : "")
+        : entry.name === (currentSession ? currentSession.label : "")
     ))
     : entriesForDate;
   const isBoss = currentRole === "boss";
@@ -1466,8 +1476,8 @@ function renderCalendarStaff() {
     if (sortMode === "employee-asc") {
       return (a.name || "").localeCompare(b.name || "", "de");
     }
-    const aStart = parseTimeToMinutes(a.fromTime) ?? 0;
-    const bStart = parseTimeToMinutes(b.fromTime) ?? 0;
+    const aStart = parseTimeToMinutes(a.fromTime) != null ? parseTimeToMinutes(a.fromTime) : 0;
+    const bStart = parseTimeToMinutes(b.fromTime) != null ? parseTimeToMinutes(b.fromTime) : 0;
     if (sortMode === "time-desc") return bStart - aStart;
     return aStart - bStart;
   });
@@ -1499,9 +1509,10 @@ function renderCalendarStaff() {
       </div>
       ${isBoss ? `<button class="danger-button" type="button" data-id="${entry.id}">Entfernen</button>` : checklistButton}
     `;
-    row.querySelector('[data-id]')?.addEventListener("click", () => removeStaffEntry(entry.id));
+    const removeStaffButton = row.querySelector('[data-id]');
+    if (removeStaffButton) removeStaffButton.addEventListener("click", () => removeStaffEntry(entry.id));
     const checklistActionButton = row.querySelector('[data-action="checklist"]');
-    checklistActionButton?.addEventListener("click", () => {
+    if (checklistActionButton) checklistActionButton.addEventListener("click", () => {
       if (checklistActionButton.disabled) return;
       createChecklistFromAssignment(entry);
     });
@@ -1629,8 +1640,8 @@ el.calendarStaffForm.addEventListener("submit", (event) => {
     el.calendarStaffForm.classList.add("hidden");
   }
 });
-el.calendarSort?.addEventListener("change", renderCalendarStaff);
-el.calendarNewAssignmentButton?.addEventListener("click", () => {
+if (el.calendarSort) el.calendarSort.addEventListener("change", renderCalendarStaff);
+if (el.calendarNewAssignmentButton) el.calendarNewAssignmentButton.addEventListener("click", () => {
   if (currentRole !== "boss") return;
   calendarPlanningOpen = true;
   el.calendarStaffForm.classList.remove("hidden");
@@ -1658,18 +1669,18 @@ el.customerDbForm.addEventListener("submit", (event) => {
   }
   resetCustomerDbForm();
 });
-el.worktimeScope?.addEventListener("change", renderWorktimeSummary);
-el.worktimeDate?.addEventListener("change", renderWorktimeSummary);
-el.checkpointForm?.addEventListener("submit", (event) => {
+if (el.worktimeScope) el.worktimeScope.addEventListener("change", renderWorktimeSummary);
+if (el.worktimeDate) el.worktimeDate.addEventListener("change", renderWorktimeSummary);
+if (el.checkpointForm) el.checkpointForm.addEventListener("submit", (event) => {
   event.preventDefault();
   if (saveCheckpoint(el.checkpointName.value)) {
     resetCheckpointForm();
   }
 });
-el.comeButton?.addEventListener("click", () => setEmployeeTime("come"));
-el.breakStartButton?.addEventListener("click", () => setEmployeeTime("breakStart"));
-el.breakEndButton?.addEventListener("click", () => setEmployeeTime("breakEnd"));
-el.leaveButton?.addEventListener("click", () => setEmployeeTime("leave"));
+if (el.comeButton) el.comeButton.addEventListener("click", () => setEmployeeTime("come"));
+if (el.breakStartButton) el.breakStartButton.addEventListener("click", () => setEmployeeTime("breakStart"));
+if (el.breakEndButton) el.breakEndButton.addEventListener("click", () => setEmployeeTime("breakEnd"));
+if (el.leaveButton) el.leaveButton.addEventListener("click", () => setEmployeeTime("leave"));
 el.moduleTabButtons.forEach((button) => {
   button.addEventListener("click", () => setActiveSection(button.dataset.section));
 });
