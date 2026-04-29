@@ -148,7 +148,7 @@ function loadSchedule() {
   if (!stored) return {};
   try {
     return JSON.parse(stored);
-  } catch {
+  } catch (error) {
     return {};
   }
 }
@@ -162,7 +162,7 @@ function loadCustomerDb() {
   if (!stored) return [];
   try {
     return JSON.parse(stored);
-  } catch {
+  } catch (error) {
     return [];
   }
 }
@@ -179,7 +179,7 @@ function loadCheckpointCatalog() {
     return Array.isArray(parsed) && parsed.length
       ? parsed.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim())
       : [...fallbackCheckpointItems];
-  } catch {
+  } catch (error) {
     return [...fallbackCheckpointItems];
   }
 }
@@ -193,7 +193,7 @@ function loadSession() {
   if (!stored) return null;
   try {
     return JSON.parse(stored);
-  } catch {
+  } catch (error) {
     return null;
   }
 }
@@ -240,7 +240,7 @@ function loadSubmissions() {
         photo: item.photo || null
       }))
     }));
-  } catch {
+  } catch (error) {
     return [];
   }
 }
