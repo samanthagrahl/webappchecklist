@@ -34,7 +34,7 @@
     "nav.checklist": ["Checkliste", "Checklist"],
     "nav.workOrder": ["Arbeitsauftrag", "Work order"],
     "nav.customerDb": ["Kundendatenbank", "Customer database"],
-    "nav.guideDb": ["Anleitungsdatenbank", "Instruction library"],
+    "nav.guideDb": ["Betriebsanleitungen", "Operating manuals"],
     "nav.calendar": ["Kalender", "Calendar"],
     "nav.worktime": ["Arbeitszeiten", "Working hours"],
     "nav.checkpoints": ["Prüfpunkte", "Checkpoints"],
@@ -51,7 +51,7 @@
     "page.calendar": ["Kalender", "Calendar"],
     "page.workOrder": ["Arbeitsauftrag", "Work orders"],
     "page.customerDb": ["Kundendatenbank", "Customer database"],
-    "page.guideDb": ["Anleitungsdatenbank", "Instruction library"],
+    "page.guideDb": ["Betriebsanleitungen", "Operating manuals"],
     "page.checkpoints": ["Prüfpunkte", "Checkpoints"],
     "chk.tplType": ["Art der Checkliste", "Checklist type"],
     "chk.tplAria": ["Art der Checkliste", "Checklist type"],
@@ -149,7 +149,7 @@
     "cust.statusActive": ["Aktiv", "Active"],
     "cust.statusInactive": ["Inaktiv", "Inactive"],
     "cust.delete": ["Löschen", "Delete"],
-    "guide.heading": ["Anleitungsdatenbank", "Instruction library"],
+    "guide.heading": ["Betriebsanleitungen", "Operating manuals"],
     "guide.intro": [
       "Betriebsanleitungen als PDF – für Mitarbeitende jederzeit abrufbar.",
       "Operating instructions as PDF – available to staff at any time."
