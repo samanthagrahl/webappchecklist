@@ -63,6 +63,23 @@ async function getSignedDownloadUrl(storageKey, expiresInSec = 3600) {
   );
 }
 
+async function getObjectBuffer(storageKey) {
+  const c = getClient();
+  const out = await c.send(
+    new GetObjectCommand({ Bucket: config.s3.bucket, Key: storageKey })
+  );
+  const body = out.Body;
+  if (!body) return Buffer.alloc(0);
+  if (typeof body.transformToByteArray === "function") {
+    return Buffer.from(await body.transformToByteArray());
+  }
+  const chunks = [];
+  for await (const chunk of body) {
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
 async function deleteObject(storageKey) {
   const c = getClient();
   await c.send(new DeleteObjectCommand({ Bucket: config.s3.bucket, Key: storageKey }));
@@ -72,5 +89,6 @@ module.exports = {
   isConfigured,
   putObject,
   getSignedDownloadUrl,
+  getObjectBuffer,
   deleteObject
 };

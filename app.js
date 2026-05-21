@@ -1361,10 +1361,55 @@ function isWorkOrderAssignment(entry) {
   return Boolean(entry && entry.assignmentKind === WORK_ORDER_ASSIGNMENT_KIND);
 }
 
-/** Nur für vertrauenswürdige data:-Bilder aus eigener Upload-Pipeline */
+function isDataImageSrc(raw) {
+  const s = String(raw || "").trim();
+  return s.startsWith("data:image/");
+}
+
+/** data:-Bilder oder signierte Cloud-URLs (Object Storage) */
 function safeDataImageSrc(raw) {
   const s = String(raw || "").trim();
-  return s.startsWith("data:image/") ? s : "";
+  if (isDataImageSrc(s)) return s;
+  if (/^https?:\/\//i.test(s)) return s;
+  return "";
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Lädt Cloud-Bilder für PDF/jsPDF als data:-URL (Same-Origin-Proxy). */
+async function resolveImageDataForPdf(photo) {
+  if (!photo || typeof photo !== "object") return "";
+  const direct = safeDataImageSrc(photo.data);
+  if (direct.startsWith("data:image/")) return direct;
+  const cloud = cloudStore();
+  const storageId = typeof photo.storageId === "string" ? photo.storageId.trim() : "";
+  if (cloud && cloud.enabled && cloud.getToken() && storageId) {
+    try {
+      const dataUrl = await cloud.fetchFileAsDataUrl(storageId);
+      if (dataUrl && dataUrl.startsWith("data:image/")) return dataUrl;
+    } catch (e) {
+      console.warn("[pdf] cloud file fetch failed", storageId, e);
+    }
+  }
+  if (direct && /^https?:\/\//i.test(direct)) {
+    try {
+      const res = await fetch(direct, { mode: "cors" });
+      if (!res.ok) return "";
+      const blob = await res.blob();
+      const dataUrl = await blobToDataUrl(blob);
+      return dataUrl.startsWith("data:image/") ? dataUrl : "";
+    } catch (e) {
+      console.warn("[pdf] remote image fetch failed", e);
+    }
+  }
+  return "";
 }
 
 function sanitizeWorkOrderChefImages(raw) {
@@ -2429,10 +2474,13 @@ async function finalizeUploadedChecklistImage(readerResult, originalFilename) {
 
 function sanitizeStoredChecklistPhoto(photo) {
   if (!photo || typeof photo !== "object") return null;
-  const data = typeof photo.data === "string" && photo.data.startsWith("data:image/") ? photo.data : "";
-  if (!data) return null;
+  const data = safeDataImageSrc(photo.data);
+  const storageId = typeof photo.storageId === "string" && photo.storageId.trim() ? photo.storageId.trim() : "";
+  if (!data && !storageId) return null;
   const name = typeof photo.name === "string" && photo.name.trim() ? photo.name.trim().slice(0, 120) : "photo.jpg";
-  return { name, data };
+  const out = { name, data: data || "" };
+  if (storageId) out.storageId = storageId;
+  return out;
 }
 
 function sanitizeStoredCustomerContractPdf(raw) {
@@ -3991,13 +4039,17 @@ function editChecklist(id) {
   setRole("employee");
 }
 
+function photoHasDisplaySrc(photo) {
+  return Boolean(photo && (safeDataImageSrc(photo.data) || (photo.storageId && String(photo.storageId).trim())));
+}
+
 function renderPhotoPreview() {
   el.photoPreview.innerHTML = "";
   uploadedPhotos.forEach((photo, index) => {
     const figure = document.createElement("figure");
     const image = document.createElement("img");
     const button = document.createElement("button");
-    image.src = photo.data;
+    image.src = safeDataImageSrc(photo.data) || "";
     image.alt = photo.name;
     button.type = "button";
     button.setAttribute("aria-label", "Bild entfernen");
@@ -4315,7 +4367,7 @@ function buildReportHtml(entry) {
               <span class="result-mark ${item.checked ? "ok" : ""}">${item.checked ? "✓" : "!"}</span>
               <div>
                 <span>${escapeHtml(itemDisplayForSubmissionItem(item, entry.checklistTemplateId))}</span>
-                ${item.photo && item.photo.data ? `<img src="${item.photo.data}" alt="${escapeHtml(item.photo.name || t("img.altCp"))}" />` : ""}
+                ${item.photo && safeDataImageSrc(item.photo.data) ? `<img src="${safeDataImageSrc(item.photo.data)}" alt="${escapeHtml(item.photo.name || t("img.altCp"))}" />` : ""}
               </div>
             </li>
           `).join("")}
@@ -4568,9 +4620,25 @@ async function generateCustomerReportPdfBlob(entry) {
     y += 1.5;
   }
 
-  const allPhotos = []
-    .concat((entry.items || []).filter((it) => it.photo && it.photo.data).map((it) => ({ data: it.photo.data, name: itemDisplayForSubmissionItem(it, entry.checklistTemplateId) })))
-    .concat((entry.photos || []).filter((p) => p && p.data).map((p) => ({ data: p.data, name: p.name || "" })));
+  const photoSources = []
+    .concat(
+      (entry.items || [])
+        .filter((it) => it.photo)
+        .map((it) => ({
+          photo: it.photo,
+          name: itemDisplayForSubmissionItem(it, entry.checklistTemplateId)
+        }))
+    )
+    .concat(
+      (entry.photos || [])
+        .filter((p) => p)
+        .map((p) => ({ photo: p, name: p.name || "" }))
+    );
+  const allPhotos = [];
+  for (const src of photoSources) {
+    const data = await resolveImageDataForPdf(src.photo);
+    if (data) allPhotos.push({ data, name: src.name });
+  }
   if (allPhotos.length) {
     drawParagraph(t("report.contract.imagesOnNextPages"), margin, contentW, 9.2, false, muted);
     y += 1.5;
@@ -5051,7 +5119,7 @@ function renderReview() {
   const reportHtml = buildReportHtml(entry);
   const mailDraftUrl = buildMailPreviewUrl(entry);
   const extraPhoto = entry.extraCosts && entry.extraCosts.photo;
-  const extraPhotoHref = extraPhoto && extraPhoto.data ? extraPhoto.data : "";
+  const extraPhotoHref = extraPhoto ? safeDataImageSrc(extraPhoto.data) : "";
   const extraPhotoDownloadName = sanitizeDownloadFilename(extraPhoto && extraPhoto.name);
   el.reviewPanel.innerHTML = `
     <div class="review-header">
@@ -5078,7 +5146,7 @@ function renderReview() {
           <div>
             <span>${escapeHtml(itemDisplayForSubmissionItem(item, entry.checklistTemplateId))}</span>
             ${item.comment ? `<small class="item-note">${escapeHtml(t("review.itemCommentLbl"))} ${escapeHtml(item.comment)}</small>` : ""}
-            ${item.photo && item.photo.data ? `<img src="${item.photo.data}" alt="${escapeHtml(item.photo.name || t("img.altCp"))}" />` : ""}
+            ${item.photo && safeDataImageSrc(item.photo.data) ? `<img src="${safeDataImageSrc(item.photo.data)}" alt="${escapeHtml(item.photo.name || t("img.altCp"))}" />` : ""}
           </div>
         </li>
       `).join("")}
@@ -5107,7 +5175,10 @@ function renderReview() {
       : ""}
 
     <div class="photo-gallery">
-      ${entry.photos.map((photo) => `<img src="${photo.data}" alt="${escapeHtml(photo.name)}">`).join("")}
+      ${entry.photos.map((photo) => {
+        const src = safeDataImageSrc(photo.data);
+        return src ? `<img src="${src}" alt="${escapeHtml(photo.name)}">` : "";
+      }).join("")}
     </div>
 
     <label class="review-comment">
@@ -9260,6 +9331,37 @@ if (el.workOrdersStatusFilter) {
   el.workOrdersStatusFilter.addEventListener("change", renderWorkOrdersPanel);
 }
 
+async function resolveCloudPhotoDisplayUrlsInSubmissions() {
+  const cloud = cloudStore();
+  if (!cloud || !cloud.enabled || !cloud.getToken()) return;
+  async function fixPhoto(photo) {
+    if (!photo || typeof photo !== "object") return;
+    if (safeDataImageSrc(photo.data)) return;
+    const sid = typeof photo.storageId === "string" ? photo.storageId.trim() : "";
+    if (!sid) return;
+    const url = await cloud.resolveFileUrl(sid);
+    if (url) photo.data = url;
+  }
+  for (const entry of submissions) {
+    if (Array.isArray(entry.photos)) {
+      for (const ph of entry.photos) await fixPhoto(ph);
+    }
+    if (Array.isArray(entry.items)) {
+      for (const it of entry.items) await fixPhoto(it.photo);
+    }
+    if (entry.extraCosts && entry.extraCosts.photo) await fixPhoto(entry.extraCosts.photo);
+  }
+  for (const row of workOrders) {
+    if (!row) continue;
+    if (Array.isArray(row.workOrderImages)) {
+      for (const ph of row.workOrderImages) await fixPhoto(ph);
+    }
+    if (Array.isArray(row.workOrderResultImages)) {
+      for (const ph of row.workOrderResultImages) await fixPhoto(ph);
+    }
+  }
+}
+
 async function bootApp() {
   migrateLegacyBrowserStorageKeys();
   const cloud = cloudStore();
@@ -9271,6 +9373,7 @@ async function bootApp() {
     try {
       await cloud.loadBootstrap();
       hydrateAppStateFromStorage();
+      await resolveCloudPhotoDisplayUrlsInSubmissions();
       currentSession = loadSession();
       enrichCurrentSessionFromUsers();
     } catch (err) {

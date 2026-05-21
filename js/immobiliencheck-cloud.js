@@ -190,6 +190,9 @@
     }
     if (typeof node !== "object") return node;
 
+    if (node.storageId && !node.data) {
+      return node;
+    }
     if (isDataUrl(node.data) && !node.storageId) {
       const ref = await uploadDataUrl(node.data, node.name || "image.jpg");
       const next = Object.assign({}, node, ref);
@@ -222,6 +225,22 @@
     const data = await res.json();
     urlCache[storageId] = data.url || "";
     return urlCache[storageId];
+  }
+
+  async function fetchFileAsDataUrl(storageId) {
+    if (!storageId || !enabled || !getToken()) return "";
+    const res = await fetch(apiUrl(`/api/v1/files/${encodeURIComponent(storageId)}/content`), {
+      credentials: "same-origin",
+      headers: authHeaders()
+    });
+    if (!res.ok) return "";
+    const blob = await res.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
   }
 
   async function hydrateDocumentAssets(node) {
@@ -324,6 +343,7 @@
     flushAll,
     flushDocument,
     resolveFileUrl,
+    fetchFileAsDataUrl,
     isDataUrl
   };
 

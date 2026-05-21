@@ -44,4 +44,11 @@ async function getFileDownloadUrl(fileId) {
   return { url, meta: row };
 }
 
-module.exports = { storeUpload, getFileMeta, getFileDownloadUrl, safeFileName };
+async function readFileBuffer(fileId) {
+  const row = await getFileMeta(fileId);
+  if (!row) return null;
+  const buffer = await s3.getObjectBuffer(row.storage_key);
+  return { buffer, meta: row };
+}
+
+module.exports = { storeUpload, getFileMeta, getFileDownloadUrl, readFileBuffer, safeFileName };

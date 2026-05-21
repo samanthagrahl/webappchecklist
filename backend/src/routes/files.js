@@ -4,7 +4,7 @@ const express = require("express");
 const multer = require("multer");
 const { config } = require("../config");
 const { requireAuth } = require("../middleware/auth");
-const { storeUpload, getFileDownloadUrl } = require("../services/files");
+const { storeUpload, getFileDownloadUrl, readFileBuffer } = require("../services/files");
 const s3 = require("../storage/s3");
 
 const router = express.Router();
@@ -53,6 +53,21 @@ router.get("/:fileId/url", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("[files/url]", err);
+    return res.status(500).json({ ok: false, error: "server_error" });
+  }
+});
+
+/** Same-Origin-Stream für PDF/Canvas (umgeht S3-CORS). */
+router.get("/:fileId/content", requireAuth, async (req, res) => {
+  try {
+    const result = await readFileBuffer(req.params.fileId);
+    if (!result) return res.status(404).json({ ok: false, error: "not_found" });
+    res.setHeader("Content-Type", result.meta.mime_type || "application/octet-stream");
+    res.setHeader("Cache-Control", "private, max-age=300");
+    res.setHeader("Content-Disposition", `inline; filename="${result.meta.original_name || "file"}"`);
+    return res.send(result.buffer);
+  } catch (err) {
+    console.error("[files/content]", err);
     return res.status(500).json({ ok: false, error: "server_error" });
   }
 });
