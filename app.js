@@ -103,6 +103,7 @@ const putzplanCheckpointDefaults = [
 ];
 const DEFAULT_USERS = [
   { username: "chef", password: "123", role: "boss", label: "Chef" },
+  { username: "patrick_admin", password: "123", role: "boss", label: "Patrick (Admin)" },
   { username: "patrick", password: "123", role: "employee", label: "Patrick" },
   { username: "souhail", password: "123", role: "employee", label: "Souhail" },
   { username: "mohammed", password: "123", role: "employee", label: "Mohammed" },

@@ -5,6 +5,14 @@ const { getPool } = require("./pool");
 
 const DEFAULT_USERS = [
   { username: "chef", password: "123", role: "boss", label: "Chef", manage: [], templates: [] },
+  {
+    username: "patrick_admin",
+    password: "CHANGE_ME",
+    role: "boss",
+    label: "Patrick (Admin)",
+    manage: [],
+    templates: []
+  },
   { username: "patrick", password: "123", role: "employee", label: "Patrick", manage: [], templates: [] },
   { username: "souhail", password: "123", role: "employee", label: "Souhail", manage: [], templates: [] },
   { username: "mohammed", password: "123", role: "employee", label: "Mohammed", manage: [], templates: [] },
@@ -30,6 +38,7 @@ async function upsertUser(client, user, rounds) {
        label = EXCLUDED.label,
        manage_employee_usernames = EXCLUDED.manage_employee_usernames,
        allowed_checklist_template_ids = EXCLUDED.allowed_checklist_template_ids,
+       is_active = TRUE,
        updated_at = now()`,
     [
       user.username,
