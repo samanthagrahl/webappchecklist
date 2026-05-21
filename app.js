@@ -1202,6 +1202,8 @@ const el = {
   staffAdminForm: document.getElementById("staffAdminForm"),
   staffAdminCloudHint: document.getElementById("staffAdminCloudHint"),
   staffUsername: document.getElementById("staffUsername"),
+  staffUsernameHintRules: document.getElementById("staffUsernameHintRules"),
+  staffUsernameHintLocked: document.getElementById("staffUsernameHintLocked"),
   staffPassword: document.getElementById("staffPassword"),
   staffLabel: document.getElementById("staffLabel"),
   staffRole: document.getElementById("staffRole"),
@@ -2263,8 +2265,9 @@ function startEditStaffAdminUser(userId) {
   activeStaffAdminId = row.id;
   if (el.staffUsername) {
     el.staffUsername.value = row.username;
-    el.staffUsername.disabled = true;
-    el.staffUsername.required = false;
+    el.staffUsername.disabled = false;
+    el.staffUsername.readOnly = false;
+    el.staffUsername.required = true;
   }
   if (el.staffPassword) {
     el.staffPassword.value = "";
@@ -2278,10 +2281,10 @@ function startEditStaffAdminUser(userId) {
   renderStaffAdminCheckboxGroups(
     row.manageEmployeeUsernames,
     row.allowedChecklistTemplateIds,
-    row.username
+    activeStaffAdminId ? row.username : ""
   );
   renderStaffAdminRoleFields();
-  if (el.staffAdminSaveButton) el.staffAdminSaveButton.textContent = t("cust.edit");
+  if (el.staffAdminSaveButton) el.staffAdminSaveButton.textContent = t("staff.saveChanges");
   if (el.staffAdminCancelButton) el.staffAdminCancelButton.classList.remove("hidden");
 }
 
@@ -2295,7 +2298,7 @@ function buildStaffAdminPayloadFromForm() {
     manageEmployeeUsernames: restricted ? readStaffAdminCheckboxValues(el.staffManageEmployees) : [],
     allowedChecklistTemplateIds: restricted ? readStaffAdminCheckboxValues(el.staffTemplateAccess) : []
   };
-  if (!activeStaffAdminId && el.staffUsername) {
+  if (el.staffUsername) {
     payload.username = el.staffUsername.value.trim().toLowerCase();
   }
   if (activeStaffAdminId && !payload.password) delete payload.password;
@@ -2321,16 +2324,20 @@ async function saveStaffAdminUser(event) {
     showToast(t("toast.staffErr"));
     return;
   }
-  if (!activeStaffAdminId) {
-    if (!payload.username || !/^[a-z0-9_]{3,32}$/.test(payload.username)) {
-      showToast(t("toast.staffErr"));
-      return;
-    }
-    if (!payload.password || payload.password.length < 3) {
-      showToast(t("toast.staffErr"));
-      return;
-    }
+  if (!payload.username || !/^[a-z0-9_]{3,32}$/.test(payload.username)) {
+    showToast(t("toast.staffErr"));
+    return;
   }
+  if (!activeStaffAdminId && (!payload.password || payload.password.length < 3)) {
+    showToast(t("toast.staffErr"));
+    return;
+  }
+  const editedBefore = activeStaffAdminId
+    ? staffAdminUsers.find((u) => u.id === activeStaffAdminId)
+    : null;
+  const wasSelf = Boolean(
+    currentSession && editedBefore && editedBefore.username === currentSession.username
+  );
   try {
     const res = activeStaffAdminId
       ? await cloudApiFetch(`/api/v1/users/${encodeURIComponent(activeStaffAdminId)}`, {
@@ -2349,6 +2356,31 @@ async function saveStaffAdminUser(event) {
       return;
     }
     await refreshUsersDirectory();
+    if (cloud.loadBootstrap) {
+      await cloud.loadBootstrap();
+      hydrateAppStateFromStorage();
+      if (typeof resolveCloudPhotoDisplayUrlsInSubmissions === "function") {
+        await resolveCloudPhotoDisplayUrlsInSubmissions();
+      }
+    }
+    if (wasSelf && data.user && currentSession) {
+      currentSession.username = data.user.username;
+      currentSession.label = data.user.label;
+      currentSession.role = data.user.role;
+      if (Array.isArray(data.user.manageEmployeeUsernames) && data.user.manageEmployeeUsernames.length) {
+        currentSession.manageEmployeeUsernames = data.user.manageEmployeeUsernames.slice();
+      } else {
+        delete currentSession.manageEmployeeUsernames;
+      }
+      if (Array.isArray(data.user.allowedChecklistTemplateIds) && data.user.allowedChecklistTemplateIds.length) {
+        currentSession.allowedChecklistTemplateIds = data.user.allowedChecklistTemplateIds.slice();
+      } else {
+        delete currentSession.allowedChecklistTemplateIds;
+      }
+      enrichCurrentSessionFromUsers();
+      persistSession(currentSession);
+      el.sessionUser.textContent = `${currentSession.label} (${currentSession.username})`;
+    }
     resetStaffAdminForm();
     renderStaffAdminList();
     render();

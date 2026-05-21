@@ -2,6 +2,7 @@
 
 const bcrypt = require("bcryptjs");
 const { getPool } = require("../db/pool");
+const { migrateUsernameReferences } = require("./usernameMigration");
 
 function mapUserRow(row) {
   return {
@@ -155,9 +156,31 @@ async function updateUser(id, payload) {
         : row.allowed_checklist_template_ids
     )
     : [];
-  const sets = ["role = $2", "label = $3", "manage_employee_usernames = $4::jsonb", "allowed_checklist_template_ids = $5::jsonb", "updated_at = now()"];
-  const params = [id, role, label, JSON.stringify(manage), JSON.stringify(templates)];
-  let idx = 6;
+  let username = row.username;
+  if (payload.username !== undefined && payload.username !== null) {
+    const nextUsername = normalizeUsername(payload.username);
+    if (!nextUsername) throw Object.assign(new Error("invalid_input"), { code: "invalid_input" });
+    if (nextUsername !== row.username) {
+      const pool = getPool();
+      const { rows: taken } = await pool.query(
+        `SELECT 1 FROM users WHERE username = $1 AND id <> $2 LIMIT 1`,
+        [nextUsername, id]
+      );
+      if (taken.length) throw Object.assign(new Error("username_taken"), { code: "username_taken" });
+      await migrateUsernameReferences(row.username, nextUsername);
+      username = nextUsername;
+    }
+  }
+  const sets = [
+    "username = $2",
+    "role = $3",
+    "label = $4",
+    "manage_employee_usernames = $5::jsonb",
+    "allowed_checklist_template_ids = $6::jsonb",
+    "updated_at = now()"
+  ];
+  const params = [id, username, role, label, JSON.stringify(manage), JSON.stringify(templates)];
+  let idx = 7;
   if (payload.isActive === true && !row.is_active) {
     sets.push("is_active = TRUE");
   }

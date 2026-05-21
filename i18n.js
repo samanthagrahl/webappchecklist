@@ -45,7 +45,13 @@
       "Zugänge anlegen, Rollen zuweisen und Passwörter zurücksetzen. Nur für den vollen Chef-Zugang.",
       "Create accounts, assign roles and reset passwords. Full admin access only."
     ],
+    "staff.usernameLabel": ["Benutzername", "Username"],
     "staff.phUsername": ["Benutzername (Kleinbuchstaben)", "Username (lowercase)"],
+    "staff.usernameLocked": [
+      "Der Benutzername kann nach dem Anlegen nicht mehr geändert werden.",
+      "The username cannot be changed after the account is created."
+    ],
+    "staff.saveChanges": ["Änderungen speichern", "Save changes"],
     "staff.phPassword": ["Passwort", "Password"],
     "staff.phPasswordEdit": ["Neues Passwort (leer = unverändert)", "New password (leave blank to keep)"],
     "staff.phLabel": ["Anzeigename", "Display name"],
@@ -56,6 +62,7 @@
     "staff.manageEmployees": ["Verwaltete Mitarbeiter", "Managed employees"],
     "staff.templateAccess": ["Erlaubte Checklisten", "Allowed checklists"],
     "staff.save": ["Zugang speichern", "Save account"],
+    "staff.saveChanges": ["Änderungen speichern", "Save changes"],
     "staff.cancelEdit": ["Bearbeitung abbrechen", "Cancel edit"],
     "staff.edit": ["Bearbeiten", "Edit"],
     "staff.delete": ["Deaktivieren", "Deactivate"],
