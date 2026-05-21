@@ -4282,6 +4282,17 @@ async function deleteChecklist(id) {
   showToast(t("toast.deletedChk"));
 }
 
+/** Statischer E-Mail-Text beim Versand (PDF enthält den ausführlichen Bericht). */
+function buildCustomerEmailBody(entry) {
+  const contact = resolveCustomerContactForReport(entry);
+  let name = String(contact.name || "").trim();
+  if (!name || name === "—") {
+    name = String((entry && entry.customerName) || "").trim();
+  }
+  if (!name) name = t("report.emailDefaultName");
+  return t("report.emailBody", { name });
+}
+
 function buildReportText(entry) {
   if (isWorkOrderReportEntry(entry)) {
     return [
@@ -4437,14 +4448,14 @@ function buildReportHtml(entry) {
 
 function openMailDraft(entry) {
   const subject = encodeURIComponent(`${t("report.subjectPrefix")} ${entry.jobTitle}`);
-  const body = encodeURIComponent(buildReportText(entry));
+  const body = encodeURIComponent(buildCustomerEmailBody(entry));
   const email = resolveCustomerEmailForEntry(entry) || "";
   return `mailto:${email}?subject=${subject}&body=${body}`;
 }
 
 function openMailDraftWithPdfHint(entry) {
   const subject = encodeURIComponent(`${t("report.subjectPrefix")} ${entry.jobTitle}`);
-  const body = encodeURIComponent(`${t("report.pdfHintAttach")}\n\n${buildReportText(entry)}`);
+  const body = encodeURIComponent(`${t("report.pdfHintAttach")}\n\n${buildCustomerEmailBody(entry)}`);
   const addr = resolveCustomerEmailForEntry(entry) || "";
   return `mailto:${addr}?subject=${subject}&body=${body}`;
 }
@@ -5005,7 +5016,7 @@ async function trySendReportViaSmtp(entry, pdfBlob, fileName) {
       body: JSON.stringify({
         to: toAddr,
         subject: `${t("report.subjectPrefix")} ${entry.jobTitle}`.trim(),
-        text: buildReportText(entry),
+        text: buildCustomerEmailBody(entry),
         pdfBase64,
         pdfFileName: fileName
       }),
@@ -5112,7 +5123,7 @@ function buildMailPreviewUrl(entry) {
           <h1>${escapeHtml(t("report.mailTitle"))}</h1>
           <p><strong>${escapeHtml(t("report.mailTo"))}</strong> ${escapeHtml(previewEmail)}</p>
           <p><strong>${escapeHtml(t("report.mailSubject"))}</strong> ${escapeHtml(`${t("report.subjectPrefix")} ${entry.jobTitle}`)}</p>
-          <pre>${escapeHtml(buildReportText(entry))}</pre>
+          <pre>${escapeHtml(buildCustomerEmailBody(entry))}</pre>
           <div class="actions">
             <a class="button primary" href="${mailtoUrl}">${escapeHtml(t("report.mailOpenBtn"))}</a>
           </div>

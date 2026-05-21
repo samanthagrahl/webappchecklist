@@ -49,6 +49,8 @@ Alle Pflichtfelder ausfüllen (siehe Kommentare in `.env.example`), besonders:
 - SMTP für **automatischen Kundenbericht** bei Freigabe (`MAIL_ENABLED=true`, `SMTP_*`)
 - `TRUST_PROXY=true` (hinter Nginx)
 
+**SMTP (IONOS + Hetzner):** `SMTP_HOST=smtp.ionos.de` (nicht `.com`, sonst oft `535`). Port **587**, `SMTP_SECURE=false`, `SMTP_REQUIRE_TLS=true`. Passwort/`SMTP_FROM` mit Sonderzeichen in `"..."`. Hetzner blockiert ausgehend **465** — Timeout, kein Auth-Fehler. Test: `cd backend && node -e "…"` (siehe Support-Doku) oder Freigabe in der App.
+
 ## Schritt 2: Server vorbereiten (CX33)
 
 ```bash
