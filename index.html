@@ -74,6 +74,7 @@
           <button class="module-tab" type="button" data-section="calendar" data-i18n="nav.calendar">Kalender</button>
           <button class="module-tab" type="button" data-section="worktime" id="worktimeTab" data-i18n="nav.worktime">Arbeitszeiten</button>
           <button class="module-tab" type="button" data-section="checkpoints" id="checkpointTab" data-i18n="nav.checkpoints">Prüfpunkte</button>
+          <button class="module-tab hidden" type="button" data-section="staffAdmin" id="staffAdminTab" data-i18n="nav.staffAdmin">Mitarbeiter</button>
         </nav>
 
         <div class="stats">
@@ -385,6 +386,44 @@
             <button class="primary-button" type="submit" data-i18n="cust.save">Kunde speichern</button>
           </form>
           <div class="customer-db-list" id="customerDbList"></div>
+        </section>
+
+        <section class="staff-admin-panel hidden" id="staffAdminPanel">
+          <div class="section-heading">
+            <h2 data-i18n="staff.heading">Mitarbeiterverwaltung</h2>
+            <p class="staff-admin-intro" data-i18n="staff.intro">Zugänge anlegen, Rollen zuweisen und Passwörter zurücksetzen.</p>
+          </div>
+          <p class="muted hidden" id="staffAdminCloudHint" data-i18n="staff.cloudOnly">Mitarbeiterverwaltung ist nur mit Cloud-Anmeldung verfügbar.</p>
+          <form class="staff-admin-form" id="staffAdminForm">
+            <input id="staffUsername" type="text" required autocomplete="off" autocapitalize="none" pattern="[a-z0-9_]{3,32}" maxlength="32" data-i18n-placeholder="staff.phUsername" placeholder="Benutzername" />
+            <small class="muted staff-username-hint" data-i18n="staff.usernameRules">3–32 Zeichen: a–z, 0–9, Unterstrich</small>
+            <input id="staffPassword" type="password" autocomplete="new-password" data-i18n-placeholder="staff.phPassword" placeholder="Passwort" />
+            <input id="staffLabel" type="text" required maxlength="80" data-i18n-placeholder="staff.phLabel" placeholder="Anzeigename" />
+            <label class="staff-role-label">
+              <span data-i18n="staff.role">Rolle</span>
+              <select id="staffRole" required>
+                <option value="employee" data-i18n="staff.roleEmployee">Mitarbeiter</option>
+                <option value="boss" data-i18n="staff.roleBoss">Chef</option>
+              </select>
+            </label>
+            <label class="staff-restricted-toggle hidden" id="staffRestrictedWrap">
+              <input id="staffRestrictedBoss" type="checkbox" />
+              <span data-i18n="staff.restrictedBoss">Eingeschränkter Chef</span>
+            </label>
+            <fieldset class="staff-admin-fieldset hidden" id="staffManageFieldset">
+              <legend data-i18n="staff.manageEmployees">Verwaltete Mitarbeiter</legend>
+              <div id="staffManageEmployees" class="staff-admin-checkboxes"></div>
+            </fieldset>
+            <fieldset class="staff-admin-fieldset hidden" id="staffTemplateFieldset">
+              <legend data-i18n="staff.templateAccess">Erlaubte Checklisten</legend>
+              <div id="staffTemplateAccess" class="staff-admin-checkboxes"></div>
+            </fieldset>
+            <div class="staff-admin-form-actions">
+              <button class="primary-button" type="submit" id="staffAdminSaveButton" data-i18n="staff.save">Zugang speichern</button>
+              <button class="text-button hidden" type="button" id="staffAdminCancelButton" data-i18n="staff.cancelEdit">Bearbeitung abbrechen</button>
+            </div>
+          </form>
+          <div class="staff-admin-list" id="staffAdminList"></div>
         </section>
 
         <section class="guide-db-panel hidden" id="guideDbPanel">

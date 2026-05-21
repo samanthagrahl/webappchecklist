@@ -101,7 +101,7 @@ const putzplanCheckpointDefaults = [
   "Staub entfernen in allen Bereichen",
   "Müll und Behälter entsorgt, Verbrauchsmaterial ergänzt"
 ];
-const users = [
+const DEFAULT_USERS = [
   { username: "chef", password: "123", role: "boss", label: "Chef" },
   { username: "patrick", password: "123", role: "employee", label: "Patrick" },
   { username: "souhail", password: "123", role: "employee", label: "Souhail" },
@@ -116,6 +116,10 @@ const users = [
     allowedChecklistTemplateIds: [PUTZ_CHECKLIST_TEMPLATE_ID]
   }
 ];
+/** Aktives Verzeichnis (Cloud-API oder Offline-Fallback). */
+let users = DEFAULT_USERS.map((u) => Object.assign({}, u));
+let staffAdminUsers = [];
+let activeStaffAdminId = "";
 
 function enrichCurrentSessionFromUsers() {
   if (!currentSession) return;
@@ -167,6 +171,78 @@ function getDefaultChecklistTemplateIdForSession() {
 
 function isFullChefSession() {
   return Boolean(currentSession && currentSession.username === "chef");
+}
+
+/** Voller Chef (nicht eingeschränkt wie Kristina) — u. a. Mitarbeiterverwaltung. */
+function isFullBossAccount(session) {
+  if (!session || session.role !== "boss") return false;
+  const arr = session.manageEmployeeUsernames;
+  return !Array.isArray(arr) || !arr.length;
+}
+
+function mapDirectoryUserRow(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const username = String(raw.username || "").trim().toLowerCase();
+  if (!username) return null;
+  return {
+    id: raw.id ? String(raw.id) : "",
+    username,
+    role: raw.role === "boss" ? "boss" : "employee",
+    label: String(raw.label || username).trim() || username,
+    manageEmployeeUsernames: Array.isArray(raw.manageEmployeeUsernames)
+      ? raw.manageEmployeeUsernames.map((x) => String(x || "").trim()).filter(Boolean)
+      : [],
+    allowedChecklistTemplateIds: Array.isArray(raw.allowedChecklistTemplateIds)
+      ? raw.allowedChecklistTemplateIds.map((x) => String(x || "").trim()).filter(Boolean)
+      : [],
+    isActive: raw.isActive !== false
+  };
+}
+
+function replaceUsersDirectory(rows) {
+  const mapped = (rows || []).map(mapDirectoryUserRow).filter(Boolean);
+  const active = mapped.filter((u) => u.isActive !== false);
+  users.length = 0;
+  active.forEach((u) => {
+    const prev = DEFAULT_USERS.find((d) => d.username === u.username);
+    users.push(Object.assign({}, prev || {}, u));
+  });
+}
+
+async function cloudApiFetch(path, init) {
+  const cloud = cloudStore();
+  const headers = Object.assign({}, (init && init.headers) || {});
+  if (cloud && cloud.enabled && cloud.getToken()) {
+    headers.Authorization = `Bearer ${cloud.getToken()}`;
+  }
+  return fetch(path, Object.assign({}, init || {}, { headers, credentials: "same-origin" }));
+}
+
+async function refreshUsersDirectory() {
+  const cloud = cloudStore();
+  if (!cloud || !cloud.enabled || !cloud.getToken()) {
+    staffAdminUsers = [];
+    return false;
+  }
+  try {
+    const res = await cloudApiFetch("/api/v1/users");
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data.ok || !Array.isArray(data.users)) return false;
+    const mapped = data.users.map(mapDirectoryUserRow).filter(Boolean);
+    if (data.admin) {
+      staffAdminUsers = mapped;
+      replaceUsersDirectory(mapped);
+    } else {
+      staffAdminUsers = [];
+      replaceUsersDirectory(mapped);
+    }
+    enrichCurrentSessionFromUsers();
+    return true;
+  } catch (err) {
+    console.warn("[users] Verzeichnis laden fehlgeschlagen:", err);
+    return false;
+  }
 }
 
 function getManagedEmployeeUsernamesForSession() {
@@ -1121,6 +1197,23 @@ const el = {
   guideDbTab: document.getElementById("guideDbTab"),
   worktimeTab: document.getElementById("worktimeTab"),
   checkpointTab: document.getElementById("checkpointTab"),
+  staffAdminTab: document.getElementById("staffAdminTab"),
+  staffAdminPanel: document.getElementById("staffAdminPanel"),
+  staffAdminForm: document.getElementById("staffAdminForm"),
+  staffAdminCloudHint: document.getElementById("staffAdminCloudHint"),
+  staffUsername: document.getElementById("staffUsername"),
+  staffPassword: document.getElementById("staffPassword"),
+  staffLabel: document.getElementById("staffLabel"),
+  staffRole: document.getElementById("staffRole"),
+  staffRestrictedWrap: document.getElementById("staffRestrictedWrap"),
+  staffRestrictedBoss: document.getElementById("staffRestrictedBoss"),
+  staffManageFieldset: document.getElementById("staffManageFieldset"),
+  staffManageEmployees: document.getElementById("staffManageEmployees"),
+  staffTemplateFieldset: document.getElementById("staffTemplateFieldset"),
+  staffTemplateAccess: document.getElementById("staffTemplateAccess"),
+  staffAdminSaveButton: document.getElementById("staffAdminSaveButton"),
+  staffAdminCancelButton: document.getElementById("staffAdminCancelButton"),
+  staffAdminList: document.getElementById("staffAdminList"),
   roleEyebrow: document.getElementById("roleEyebrow"),
   pageTitle: document.getElementById("pageTitle"),
   emailStatus: document.getElementById("emailStatus"),
@@ -2101,6 +2194,263 @@ function resetGuideDbForm() {
   if (el.guideDbSaveButton) el.guideDbSaveButton.textContent = t("guide.save");
 }
 
+function canAccessStaffAdmin() {
+  return isFullBossAccount(currentSession) || isFullChefSession();
+}
+
+function renderStaffAdminRoleFields() {
+  if (!el.staffRole) return;
+  const role = el.staffRole.value;
+  const restricted = Boolean(el.staffRestrictedBoss && el.staffRestrictedBoss.checked);
+  const showBossOpts = role === "boss";
+  if (el.staffRestrictedWrap) el.staffRestrictedWrap.classList.toggle("hidden", !showBossOpts);
+  if (el.staffManageFieldset) el.staffManageFieldset.classList.toggle("hidden", !showBossOpts || !restricted);
+  if (el.staffTemplateFieldset) el.staffTemplateFieldset.classList.toggle("hidden", !showBossOpts || !restricted);
+}
+
+function renderStaffAdminCheckboxGroups(selectedManage, selectedTemplates, excludeUsername) {
+  const manage = selectedManage || [];
+  const templates = selectedTemplates || [];
+  if (el.staffManageEmployees) {
+    const employees = getEmployeeUsers().filter((e) => e.username !== excludeUsername);
+    el.staffManageEmployees.innerHTML = employees.length
+      ? employees.map((emp) => `
+        <label>
+          <input type="checkbox" value="${escapeHtml(emp.username)}" ${manage.includes(emp.username) ? "checked" : ""} />
+          <span>${escapeHtml(emp.label)} (${escapeHtml(emp.username)})</span>
+        </label>
+      `).join("")
+      : `<small class="muted">${escapeHtml(t("staff.manageEmployees"))}: —</small>`;
+  }
+  if (el.staffTemplateAccess) {
+    el.staffTemplateAccess.innerHTML = checklistTemplates.map((tpl) => `
+      <label>
+        <input type="checkbox" value="${escapeHtml(tpl.id)}" ${templates.includes(tpl.id) ? "checked" : ""} />
+        <span>${escapeHtml(tpl.name)}</span>
+      </label>
+    `).join("");
+  }
+}
+
+function readStaffAdminCheckboxValues(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll('input[type="checkbox"]:checked'))
+    .map((node) => String(node.value || "").trim())
+    .filter(Boolean);
+}
+
+function resetStaffAdminForm() {
+  activeStaffAdminId = "";
+  if (el.staffAdminForm) el.staffAdminForm.reset();
+  if (el.staffUsername) {
+    el.staffUsername.disabled = false;
+    el.staffUsername.required = true;
+  }
+  if (el.staffPassword) {
+    el.staffPassword.required = true;
+    el.staffPassword.placeholder = t("staff.phPassword");
+  }
+  if (el.staffRestrictedBoss) el.staffRestrictedBoss.checked = false;
+  renderStaffAdminCheckboxGroups([], []);
+  renderStaffAdminRoleFields();
+  if (el.staffAdminSaveButton) el.staffAdminSaveButton.textContent = t("staff.save");
+  if (el.staffAdminCancelButton) el.staffAdminCancelButton.classList.add("hidden");
+}
+
+function startEditStaffAdminUser(userId) {
+  const row = staffAdminUsers.find((u) => u.id === userId);
+  if (!row) return;
+  activeStaffAdminId = row.id;
+  if (el.staffUsername) {
+    el.staffUsername.value = row.username;
+    el.staffUsername.disabled = true;
+    el.staffUsername.required = false;
+  }
+  if (el.staffPassword) {
+    el.staffPassword.value = "";
+    el.staffPassword.required = false;
+    el.staffPassword.placeholder = t("staff.phPasswordEdit");
+  }
+  if (el.staffLabel) el.staffLabel.value = row.label;
+  if (el.staffRole) el.staffRole.value = row.role;
+  const restricted = row.role === "boss" && row.manageEmployeeUsernames.length > 0;
+  if (el.staffRestrictedBoss) el.staffRestrictedBoss.checked = restricted;
+  renderStaffAdminCheckboxGroups(
+    row.manageEmployeeUsernames,
+    row.allowedChecklistTemplateIds,
+    row.username
+  );
+  renderStaffAdminRoleFields();
+  if (el.staffAdminSaveButton) el.staffAdminSaveButton.textContent = t("cust.edit");
+  if (el.staffAdminCancelButton) el.staffAdminCancelButton.classList.remove("hidden");
+}
+
+function buildStaffAdminPayloadFromForm() {
+  const role = el.staffRole ? el.staffRole.value : "employee";
+  const restricted = Boolean(el.staffRestrictedBoss && el.staffRestrictedBoss.checked && role === "boss");
+  const payload = {
+    label: el.staffLabel ? el.staffLabel.value.trim() : "",
+    role,
+    password: el.staffPassword ? el.staffPassword.value : "",
+    manageEmployeeUsernames: restricted ? readStaffAdminCheckboxValues(el.staffManageEmployees) : [],
+    allowedChecklistTemplateIds: restricted ? readStaffAdminCheckboxValues(el.staffTemplateAccess) : []
+  };
+  if (!activeStaffAdminId && el.staffUsername) {
+    payload.username = el.staffUsername.value.trim().toLowerCase();
+  }
+  if (activeStaffAdminId && !payload.password) delete payload.password;
+  return payload;
+}
+
+function staffAdminErrorToast(code) {
+  if (code === "username_taken") showToast(t("toast.staffUsernameTaken"));
+  else if (code === "cannot_delete_self") showToast(t("toast.staffCannotDeleteSelf"));
+  else if (code === "last_full_boss") showToast(t("toast.staffLastBoss"));
+  else showToast(t("toast.staffErr"));
+}
+
+async function saveStaffAdminUser(event) {
+  if (event) event.preventDefault();
+  const cloud = cloudStore();
+  if (!cloud || !cloud.enabled || !cloud.getToken()) {
+    showToast(t("staff.cloudOnly"));
+    return;
+  }
+  const payload = buildStaffAdminPayloadFromForm();
+  if (!payload.label) {
+    showToast(t("toast.staffErr"));
+    return;
+  }
+  if (!activeStaffAdminId) {
+    if (!payload.username || !/^[a-z0-9_]{3,32}$/.test(payload.username)) {
+      showToast(t("toast.staffErr"));
+      return;
+    }
+    if (!payload.password || payload.password.length < 3) {
+      showToast(t("toast.staffErr"));
+      return;
+    }
+  }
+  try {
+    const res = activeStaffAdminId
+      ? await cloudApiFetch(`/api/v1/users/${encodeURIComponent(activeStaffAdminId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      : await cloudApiFetch("/api/v1/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      staffAdminErrorToast(data.error);
+      return;
+    }
+    await refreshUsersDirectory();
+    resetStaffAdminForm();
+    renderStaffAdminList();
+    render();
+    showToast(t("toast.staffSaved"));
+  } catch (err) {
+    console.error(err);
+    showToast(t("toast.staffErr"));
+  }
+}
+
+async function deactivateStaffAdminUser(userId) {
+  const cloud = cloudStore();
+  if (!cloud || !cloud.enabled || !cloud.getToken()) return;
+  const row = staffAdminUsers.find((u) => u.id === userId);
+  if (!row) return;
+  const msg = row.isActive === false
+    ? ""
+    : `${row.label} (${row.username})`;
+  if (row.isActive !== false && !window.confirm(`${t("staff.delete")}? ${msg}`)) return;
+  try {
+    if (row.isActive === false) {
+      const res = await cloudApiFetch(`/api/v1/users/${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: true, label: row.label, role: row.role })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        staffAdminErrorToast(data.error);
+        return;
+      }
+      showToast(t("toast.staffReactivated"));
+    } else {
+      const res = await cloudApiFetch(`/api/v1/users/${encodeURIComponent(userId)}`, {
+        method: "DELETE"
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        staffAdminErrorToast(data.error);
+        return;
+      }
+      showToast(t("toast.staffDeleted"));
+    }
+    await refreshUsersDirectory();
+    renderStaffAdminList();
+    render();
+  } catch (err) {
+    console.error(err);
+    showToast(t("toast.staffErr"));
+  }
+}
+
+function renderStaffAdminList() {
+  if (!el.staffAdminList) return;
+  const rows = staffAdminUsers.slice().sort((a, b) => {
+    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+    return a.label.localeCompare(b.label, "de");
+  });
+  if (!rows.length) {
+    el.staffAdminList.innerHTML = `<p class="muted">${escapeHtml(t("staff.heading"))}: —</p>`;
+    return;
+  }
+  el.staffAdminList.innerHTML = rows.map((row) => {
+    const roleLabel = row.role === "boss" ? t("staff.roleBoss") : t("staff.roleEmployee");
+    const restricted = row.role === "boss" && row.manageEmployeeUsernames.length > 0;
+    const metaParts = [roleLabel];
+    if (restricted) metaParts.push(t("staff.restrictedBoss"));
+    if (row.isActive === false) metaParts.push(t("staff.inactive"));
+    const toggleLabel = row.isActive === false ? t("staff.reactivate") : t("staff.delete");
+    return `
+      <article class="staff-admin-item${row.isActive === false ? " inactive" : ""}" data-staff-id="${escapeHtml(row.id)}">
+        <div class="staff-admin-item-head">
+          <strong>${escapeHtml(row.label)}</strong>
+          <span class="staff-admin-item-meta">@${escapeHtml(row.username)} · ${escapeHtml(metaParts.join(" · "))}</span>
+        </div>
+        <div class="staff-admin-item-actions">
+          <button type="button" class="text-button" data-staff-edit="${escapeHtml(row.id)}">${escapeHtml(t("staff.edit"))}</button>
+          <button type="button" class="text-button" data-staff-toggle="${escapeHtml(row.id)}">${escapeHtml(toggleLabel)}</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+async function renderStaffAdminPanel() {
+  if (!canAccessStaffAdmin()) return;
+  const cloud = cloudStore();
+  const cloudOn = Boolean(cloud && cloud.enabled && cloud.getToken());
+  if (el.staffAdminCloudHint) el.staffAdminCloudHint.classList.toggle("hidden", cloudOn);
+  if (el.staffAdminForm) el.staffAdminForm.classList.toggle("hidden", !cloudOn);
+  if (!cloudOn) {
+    if (el.staffAdminList) {
+      el.staffAdminList.innerHTML = `<p class="muted">${escapeHtml(t("staff.cloudOnly"))}</p>`;
+    }
+    return;
+  }
+  await refreshUsersDirectory();
+  renderStaffAdminCheckboxGroups([], []);
+  renderStaffAdminRoleFields();
+  renderStaffAdminList();
+}
+
 function downloadGuidePdf(entry, lang) {
   const pdfs = sanitizeGuidePdfs(entry && entry.pdfs);
   const pdf = pdfs[lang];
@@ -2970,8 +3320,16 @@ function getEmployeeLabelByUsername(username) {
 }
 
 function getAvailableSections() {
-  if (isFullChefSession()) return ["checklist", "workOrder", "customerDb", "guideDb", "calendar", "worktime", "checkpoints"];
-  if (currentSession && currentSession.role === "employee") return ["checklist", "workOrder", "calendar", "worktime", "guideDb"];
+  const sections = ["checklist", "workOrder", "guideDb", "calendar", "worktime"];
+  if (isFullChefSession()) {
+    return sections.concat(["customerDb", "checkpoints", "staffAdmin"]);
+  }
+  if (isFullBossAccount(currentSession)) {
+    return sections.concat(["staffAdmin"]);
+  }
+  if (currentSession && currentSession.role === "employee") {
+    return ["checklist", "workOrder", "calendar", "worktime", "guideDb"];
+  }
   return ["checklist", "workOrder", "calendar", "worktime", "guideDb"];
 }
 
@@ -2989,6 +3347,9 @@ function setActiveSection(section) {
   if (section === "guideDb") {
     renderGuideDb();
   }
+  if (section === "staffAdmin") {
+    void renderStaffAdminPanel();
+  }
 }
 
 function renderSectionVisibility() {
@@ -2999,6 +3360,9 @@ function renderSectionVisibility() {
   positionGuideDbNavTab();
   el.worktimeTab.classList.remove("hidden");
   el.checkpointTab.classList.toggle("hidden", !isFullChef);
+  const canStaffAdmin = canAccessStaffAdmin();
+  if (el.staffAdminTab) el.staffAdminTab.classList.toggle("hidden", !canStaffAdmin);
+  if (el.staffAdminPanel) el.staffAdminPanel.classList.toggle("hidden", activeSection !== "staffAdmin" || !canStaffAdmin);
   el.moduleTabButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.section === activeSection);
   });
@@ -3036,6 +3400,8 @@ function renderSectionVisibility() {
       el.pageTitle.textContent = t("page.guideDb");
     } else if (activeSection === "checkpoints") {
       el.pageTitle.textContent = t("page.checkpoints");
+    } else if (activeSection === "staffAdmin") {
+      el.pageTitle.textContent = t("page.staffAdmin");
     }
   }
 
@@ -3105,6 +3471,7 @@ async function login(username, password, remember = false) {
     }
     persistSession(currentSession, remember);
     enrichCurrentSessionFromUsers();
+    await refreshUsersDirectory();
     applyDefaultStatusFiltersOnLogin(user.role);
     el.sessionUser.textContent = `${user.label} (${user.username})`;
     el.authScreen.classList.add("hidden");
@@ -9343,6 +9710,33 @@ if (el.checkpointForm) el.checkpointForm.addEventListener("submit", (event) => {
 });
 if (el.comeButton) el.comeButton.addEventListener("click", () => setEmployeeTime("come"));
 if (el.leaveButton) el.leaveButton.addEventListener("click", () => setEmployeeTime("leave"));
+if (el.staffAdminForm) {
+  el.staffAdminForm.addEventListener("submit", (event) => {
+    void saveStaffAdminUser(event);
+  });
+}
+if (el.staffRole) {
+  el.staffRole.addEventListener("change", renderStaffAdminRoleFields);
+}
+if (el.staffRestrictedBoss) {
+  el.staffRestrictedBoss.addEventListener("change", renderStaffAdminRoleFields);
+}
+if (el.staffAdminCancelButton) {
+  el.staffAdminCancelButton.addEventListener("click", () => resetStaffAdminForm());
+}
+if (el.staffAdminList) {
+  el.staffAdminList.addEventListener("click", (event) => {
+    const editBtn = event.target.closest("[data-staff-edit]");
+    const toggleBtn = event.target.closest("[data-staff-toggle]");
+    if (editBtn) {
+      startEditStaffAdminUser(editBtn.getAttribute("data-staff-edit"));
+      return;
+    }
+    if (toggleBtn) {
+      void deactivateStaffAdminUser(toggleBtn.getAttribute("data-staff-toggle"));
+    }
+  });
+}
 el.moduleTabButtons.forEach((button) => {
   button.addEventListener("click", () => setActiveSection(button.dataset.section));
 });
@@ -9463,6 +9857,7 @@ async function bootApp() {
       await resolveCloudPhotoDisplayUrlsInSubmissions();
       currentSession = loadSession();
       enrichCurrentSessionFromUsers();
+      await refreshUsersDirectory();
     } catch (err) {
       console.warn("[cloud] Bootstrap nach Token-Reload fehlgeschlagen:", err);
       persistSession(null);
@@ -9476,6 +9871,7 @@ async function bootApp() {
   resetForm();
   resetCustomerDbForm();
   resetGuideDbForm();
+  resetStaffAdminForm();
   refreshCheckpointStaffUi();
   if (currentSession && (cloud && cloud.enabled
     ? Boolean(currentSession.username && currentSession.role)

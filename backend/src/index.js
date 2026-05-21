@@ -11,6 +11,7 @@ const bootstrapRoutes = require("./routes/bootstrap");
 const documentsRoutes = require("./routes/documents");
 const filesRoutes = require("./routes/files");
 const mailRoutes = require("./routes/mail");
+const usersRoutes = require("./routes/users");
 
 assertProductionConfig();
 
@@ -57,6 +58,7 @@ app.use("/api/v1/bootstrap", bootstrapRoutes);
 app.use("/api/v1/documents", documentsRoutes);
 app.use("/api/v1/files", filesRoutes);
 app.use("/api/v1/mail", mailRoutes);
+app.use("/api/v1/users", usersRoutes);
 
 /* Öffentliche Erkennung für die Webapp (ohne Login) */
 app.get("/api/mail-capabilities", (req, res) => {
