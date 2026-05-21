@@ -194,7 +194,7 @@
       return node;
     }
     if (isDataUrl(node.data) && !node.storageId) {
-      const ref = await uploadDataUrl(node.data, node.name || "image.jpg");
+      const ref = await uploadDataUrl(node.data, node.name || "upload.bin");
       const next = Object.assign({}, node, ref);
       delete next.data;
       return next;

@@ -1401,6 +1401,25 @@ function photoDisplayImgHtml(photo, altText) {
   return `<img src="${src}" alt="${escapeHtml(alt)}" loading="lazy" />`;
 }
 
+/** Download-/Anzeige-URL für gespeicherte PDFs (Cloud: API-Stream mit Token). */
+function contractPdfDisplayHref(pdf) {
+  if (!pdf || typeof pdf !== "object") return "";
+  const storageId = typeof pdf.storageId === "string" ? pdf.storageId.trim() : "";
+  const cloud = cloudStore();
+  if (storageId && cloud && cloud.enabled && cloud.getToken()) {
+    return `/api/v1/files/${encodeURIComponent(storageId)}/content?token=${encodeURIComponent(cloud.getToken())}`;
+  }
+  const data = typeof pdf.data === "string" ? pdf.data.trim() : "";
+  if (data.startsWith("data:application/pdf")) return data;
+  if (/^https?:\/\//i.test(data)) return data;
+  return "";
+}
+
+function contractPdfIsStored(raw) {
+  const pdf = sanitizeStoredCustomerContractPdf(raw);
+  return Boolean(pdf && (pdf.storageId || pdf.data));
+}
+
 /** Lädt Cloud-Bilder für PDF/jsPDF als data:-URL (Same-Origin-Proxy). */
 async function resolveImageDataForPdf(photo) {
   if (!photo || typeof photo !== "object") return "";
@@ -2057,7 +2076,7 @@ function renderGuidePdfStatusInForm(lang) {
   const removeEl = el[`guidePdf${lang.charAt(0).toUpperCase()}${lang.slice(1)}Remove`];
   const pdf = pendingGuidePdfs[lang];
   if (!statusEl || !removeEl) return;
-  if (!pdf || !pdf.data) {
+  if (!contractPdfIsStored(pdf)) {
     statusEl.innerHTML = "";
     removeEl.classList.add("hidden");
     return;
@@ -2089,8 +2108,13 @@ function downloadGuidePdf(entry, lang) {
     showToast(t("guide.noPdf"));
     return;
   }
+  const href = contractPdfDisplayHref(pdf);
+  if (!href) {
+    showToast(t("guide.noPdf"));
+    return;
+  }
   const link = document.createElement("a");
-  link.href = pdf.data;
+  link.href = href;
   link.download = pdf.name || "anleitung.pdf";
   link.rel = "noopener";
   document.body.appendChild(link);
@@ -2506,11 +2530,15 @@ function sanitizeStoredChecklistPhoto(photo) {
 
 function sanitizeStoredCustomerContractPdf(raw) {
   if (!raw || typeof raw !== "object") return null;
-  const data = typeof raw.data === "string" && raw.data.startsWith("data:application/pdf") ? raw.data : "";
-  if (!data) return null;
+  const storageId = typeof raw.storageId === "string" && raw.storageId.trim() ? raw.storageId.trim() : "";
+  const dataRaw = typeof raw.data === "string" ? raw.data.trim() : "";
+  const data = dataRaw.startsWith("data:application/pdf") ? dataRaw : "";
+  if (!data && !storageId) return null;
   let name = typeof raw.name === "string" && raw.name.trim() ? raw.name.trim().slice(0, 120) : "Kundenvertrag.pdf";
   if (!name.toLowerCase().endsWith(".pdf")) name = `${name}.pdf`;
-  return { name, data };
+  const out = { name, data: data || "" };
+  if (storageId) out.storageId = storageId;
+  return out;
 }
 
 function readCustomerContractPdfFile(file) {
@@ -2549,7 +2577,7 @@ function readCustomerContractPdfFile(file) {
 
 function renderCustomerContractStatusInDb() {
   if (!el.dbContractStatus || !el.dbContractRemove) return;
-  if (!pendingCustomerContractPdf || !pendingCustomerContractPdf.data) {
+  if (!contractPdfIsStored(pendingCustomerContractPdf)) {
     el.dbContractStatus.innerHTML = "";
     el.dbContractRemove.classList.add("hidden");
     return;
@@ -2561,8 +2589,10 @@ function renderCustomerContractStatusInDb() {
 function downloadCustomerContractPdf(entry) {
   const pdf = sanitizeStoredCustomerContractPdf(entry && entry.contractPdf);
   if (!pdf) return;
+  const href = contractPdfDisplayHref(pdf);
+  if (!href) return;
   const link = document.createElement("a");
-  link.href = pdf.data;
+  link.href = href;
   link.download = pdf.name || "Kundenvertrag.pdf";
   link.rel = "noopener";
   document.body.appendChild(link);
@@ -6887,7 +6917,7 @@ function renderCustomerDb(preserveOpenCustomerId) {
         <div class="customer-db-actions">
           ${mapsUrl ? `<a class="text-button" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(t("cust.maps"))}</a>` : ""}
           <button class="text-button" type="button" data-toggle-checkpoints="${entry.id}">${escapeHtml(t("cust.checkpoints"))}</button>
-          ${sanitizeStoredCustomerContractPdf(entry.contractPdf)
+          ${contractPdfIsStored(entry.contractPdf)
     ? `<button class="text-button" type="button" data-download-contract="${entry.id}">${escapeHtml(t("cust.contractDownload"))}</button>`
     : ""}
           <button class="text-button" type="button" data-edit-id="${entry.id}">${escapeHtml(t("cust.edit"))}</button>
