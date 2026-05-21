@@ -41,6 +41,8 @@ Alle Einstellungen liegen in **`.env`** (Vorlage: **`.env.example`**).
 
 Siehe [`DEPLOY-HETZNER.md`](DEPLOY-HETZNER.md) — CX33, PostgreSQL, Object Storage, Domain, TLS.
 
+Nach Code-Änderungen in Cursor: [`DEPLOY-UPDATE.md`](DEPLOY-UPDATE.md).
+
 Wichtig für automatischen Kundenbericht:
 
 - `MAIL_ENABLED=true`
