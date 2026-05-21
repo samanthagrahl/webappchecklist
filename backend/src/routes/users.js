@@ -8,7 +8,8 @@ const {
   listAdminUsers,
   createUser,
   updateUser,
-  deactivateUser
+  deactivateUser,
+  permanentlyDeleteUser
 } = require("../services/users");
 
 const router = express.Router();
@@ -55,6 +56,11 @@ router.patch("/:id", requireAuth, requireFullBoss, async (req, res) => {
 
 router.delete("/:id", requireAuth, requireFullBoss, async (req, res) => {
   try {
+    const permanent = req.query.permanent === "1" || req.query.permanent === "true";
+    if (permanent) {
+      const removed = await permanentlyDeleteUser(req.params.id, req.user.id);
+      return res.json({ ok: true, removed: true, username: removed.username });
+    }
     const user = await deactivateUser(req.params.id, req.user.id);
     return res.json({ ok: true, user });
   } catch (err) {

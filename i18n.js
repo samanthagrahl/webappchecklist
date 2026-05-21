@@ -66,6 +66,11 @@
     "staff.cancelEdit": ["Bearbeitung abbrechen", "Cancel edit"],
     "staff.edit": ["Bearbeiten", "Edit"],
     "staff.delete": ["Deaktivieren", "Deactivate"],
+    "staff.deletePermanent": ["Endgültig löschen", "Delete permanently"],
+    "staff.deletePermanentPrompt": [
+      "Zum endgültigen Löschen den Benutzernamen eingeben: {username}",
+      "To delete permanently, type the username: {username}"
+    ],
     "staff.reactivate": ["Reaktivieren", "Reactivate"],
     "staff.inactive": ["deaktiviert", "deactivated"],
     "staff.cloudOnly": [
@@ -79,6 +84,11 @@
     "page.staffAdmin": ["Mitarbeiterverwaltung", "Staff management"],
     "toast.staffSaved": ["Zugang gespeichert.", "Account saved."],
     "toast.staffDeleted": ["Zugang deaktiviert.", "Account deactivated."],
+    "toast.staffPurged": ["Zugang endgültig gelöscht.", "Account permanently deleted."],
+    "toast.staffDeletePermanentMismatch": [
+      "Abgebrochen — Benutzername stimmt nicht überein.",
+      "Cancelled — username did not match."
+    ],
     "toast.staffReactivated": ["Zugang reaktiviert.", "Account reactivated."],
     "toast.staffErr": ["Speichern fehlgeschlagen.", "Save failed."],
     "toast.staffUsernameTaken": ["Benutzername ist bereits vergeben.", "Username already taken."],

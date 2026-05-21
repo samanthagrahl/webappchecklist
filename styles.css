@@ -2281,9 +2281,24 @@ select.boss-status-select {
   background: #fffdf9;
 }
 
-.staff-admin-form .staff-username-hint {
+.staff-username-wrap {
   grid-column: 1 / -1;
-  margin: -4px 0 0;
+  display: grid;
+  gap: 4px;
+}
+
+.staff-username-label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+  color: #3f3f3f;
+}
+
+.staff-username-label input.staff-username-locked {
+  background: #f0ebe3;
+  color: #4a443c;
+  cursor: not-allowed;
+  border-color: #d8cfc0;
 }
 
 .staff-role-label,
@@ -2376,6 +2391,10 @@ select.boss-status-select {
   flex-wrap: wrap;
   gap: 8px 12px;
   margin-top: 8px;
+}
+
+.staff-admin-item-actions .staff-delete-permanent {
+  color: #8b3a2a;
 }
 
 .guide-db-panel {

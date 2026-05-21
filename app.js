@@ -2393,6 +2393,41 @@ async function saveStaffAdminUser(event) {
   }
 }
 
+async function permanentlyDeleteStaffAdminUser(userId) {
+  const cloud = cloudStore();
+  if (!cloud || !cloud.enabled || !cloud.getToken()) return;
+  const row = staffAdminUsers.find((u) => u.id === userId);
+  if (!row) return;
+  const typed = window.prompt(
+    t("staff.deletePermanentPrompt", { username: row.username }),
+    ""
+  );
+  if (typed === null) return;
+  if (String(typed).trim().toLowerCase() !== row.username) {
+    showToast(t("toast.staffDeletePermanentMismatch"));
+    return;
+  }
+  try {
+    const res = await cloudApiFetch(
+      `/api/v1/users/${encodeURIComponent(userId)}?permanent=1`,
+      { method: "DELETE" }
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      staffAdminErrorToast(data.error);
+      return;
+    }
+    if (activeStaffAdminId === userId) resetStaffAdminForm();
+    await refreshUsersDirectory();
+    renderStaffAdminList();
+    render();
+    showToast(t("toast.staffPurged"));
+  } catch (err) {
+    console.error(err);
+    showToast(t("toast.staffErr"));
+  }
+}
+
 async function deactivateStaffAdminUser(userId) {
   const cloud = cloudStore();
   if (!cloud || !cloud.enabled || !cloud.getToken()) return;
@@ -2461,6 +2496,7 @@ function renderStaffAdminList() {
         <div class="staff-admin-item-actions">
           <button type="button" class="text-button" data-staff-edit="${escapeHtml(row.id)}">${escapeHtml(t("staff.edit"))}</button>
           <button type="button" class="text-button" data-staff-toggle="${escapeHtml(row.id)}">${escapeHtml(toggleLabel)}</button>
+          <button type="button" class="text-button staff-delete-permanent" data-staff-purge="${escapeHtml(row.id)}">${escapeHtml(t("staff.deletePermanent"))}</button>
         </div>
       </article>
     `;
@@ -9759,8 +9795,13 @@ if (el.staffAdminList) {
   el.staffAdminList.addEventListener("click", (event) => {
     const editBtn = event.target.closest("[data-staff-edit]");
     const toggleBtn = event.target.closest("[data-staff-toggle]");
+    const purgeBtn = event.target.closest("[data-staff-purge]");
     if (editBtn) {
       startEditStaffAdminUser(editBtn.getAttribute("data-staff-edit"));
+      return;
+    }
+    if (purgeBtn) {
+      void permanentlyDeleteStaffAdminUser(purgeBtn.getAttribute("data-staff-purge"));
       return;
     }
     if (toggleBtn) {

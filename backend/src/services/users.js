@@ -205,21 +205,24 @@ async function updateUser(id, payload) {
   return mapAdminUserRow(rows[0]);
 }
 
-async function deactivateUser(id, actorId) {
-  const row = await findById(id);
+async function assertMayRemoveUser(row, actorId) {
   if (!row) throw Object.assign(new Error("not_found"), { code: "not_found" });
-  if (!row.is_active) return mapAdminUserRow(row);
   if (String(row.id) === String(actorId)) {
     throw Object.assign(new Error("cannot_delete_self"), { code: "cannot_delete_self" });
   }
   const isRestricted = Array.isArray(row.manage_employee_usernames) && row.manage_employee_usernames.length > 0;
   const isFullBoss = row.role === "boss" && !isRestricted;
-  if (isFullBoss) {
+  if (isFullBoss && row.is_active !== false) {
     const others = await countActiveFullBosses(row.id);
-    if (others < 1) {
-      throw Object.assign(new Error("last_full_boss"), { code: "last_full_boss" });
-    }
+    if (others < 1) throw Object.assign(new Error("last_full_boss"), { code: "last_full_boss" });
   }
+}
+
+async function deactivateUser(id, actorId) {
+  const row = await findById(id);
+  if (!row) throw Object.assign(new Error("not_found"), { code: "not_found" });
+  if (!row.is_active) return mapAdminUserRow(row);
+  await assertMayRemoveUser(row, actorId);
   const pool = getPool();
   const { rows } = await pool.query(
     `UPDATE users SET is_active = FALSE, updated_at = now() WHERE id = $1
@@ -230,6 +233,45 @@ async function deactivateUser(id, actorId) {
   return mapAdminUserRow(rows[0]);
 }
 
+async function removeUsernameFromManageLists(client, username) {
+  const { rows } = await client.query(
+    `SELECT id, manage_employee_usernames FROM users
+     WHERE manage_employee_usernames @> $1::jsonb`,
+    [JSON.stringify([username])]
+  );
+  for (const u of rows) {
+    const list = Array.isArray(u.manage_employee_usernames) ? u.manage_employee_usernames : [];
+    const next = list.filter((name) => name !== username);
+    await client.query(
+      `UPDATE users SET manage_employee_usernames = $2::jsonb, updated_at = now() WHERE id = $1`,
+      [u.id, JSON.stringify(next)]
+    );
+  }
+}
+
+async function permanentlyDeleteUser(id, actorId) {
+  const row = await findById(id);
+  if (!row) throw Object.assign(new Error("not_found"), { code: "not_found" });
+  await assertMayRemoveUser(row, actorId);
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`UPDATE stored_files SET uploaded_by = NULL WHERE uploaded_by = $1`, [id]);
+    await client.query(`UPDATE app_documents SET updated_by = NULL WHERE updated_by = $1`, [id]);
+    await removeUsernameFromManageLists(client, row.username);
+    const { rowCount } = await client.query(`DELETE FROM users WHERE id = $1`, [id]);
+    if (!rowCount) throw Object.assign(new Error("not_found"), { code: "not_found" });
+    await client.query("COMMIT");
+    return { username: row.username, label: row.label };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   findByUsername,
   verifyLogin,
@@ -238,6 +280,7 @@ module.exports = {
   createUser,
   updateUser,
   deactivateUser,
+  permanentlyDeleteUser,
   mapUserRow,
   normalizeUsername,
   normalizeRole
