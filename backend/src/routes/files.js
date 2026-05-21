@@ -3,7 +3,7 @@
 const express = require("express");
 const multer = require("multer");
 const { config } = require("../config");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requireAuthQueryOrHeader } = require("../middleware/auth");
 const { storeUpload, getFileDownloadUrl, readFileBuffer } = require("../services/files");
 const s3 = require("../storage/s3");
 
@@ -58,7 +58,7 @@ router.get("/:fileId/url", requireAuth, async (req, res) => {
 });
 
 /** Same-Origin-Stream für PDF/Canvas (umgeht S3-CORS). */
-router.get("/:fileId/content", requireAuth, async (req, res) => {
+router.get("/:fileId/content", requireAuthQueryOrHeader, async (req, res) => {
   try {
     const result = await readFileBuffer(req.params.fileId);
     if (!result) return res.status(404).json({ ok: false, error: "not_found" });

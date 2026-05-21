@@ -1383,6 +1383,24 @@ function blobToDataUrl(blob) {
   });
 }
 
+/** src für &lt;img&gt; — bei Cloud über API-Stream (Token in Query), nicht direkte S3-URL. */
+function photoDisplaySrc(photo) {
+  if (!photo || typeof photo !== "object") return "";
+  const storageId = typeof photo.storageId === "string" ? photo.storageId.trim() : "";
+  const cloud = cloudStore();
+  if (storageId && cloud && cloud.enabled && cloud.getToken()) {
+    return `/api/v1/files/${encodeURIComponent(storageId)}/content?token=${encodeURIComponent(cloud.getToken())}`;
+  }
+  return safeDataImageSrc(photo.data);
+}
+
+function photoDisplayImgHtml(photo, altText) {
+  const src = photoDisplaySrc(photo);
+  if (!src) return "";
+  const alt = altText || (photo && photo.name) || t("img.altCp");
+  return `<img src="${src}" alt="${escapeHtml(alt)}" loading="lazy" />`;
+}
+
 /** Lädt Cloud-Bilder für PDF/jsPDF als data:-URL (Same-Origin-Proxy). */
 async function resolveImageDataForPdf(photo) {
   if (!photo || typeof photo !== "object") return "";
@@ -1419,9 +1437,12 @@ function sanitizeWorkOrderChefImages(raw) {
     if (out.length >= WORK_ORDER_MAX_CHEF_PHOTOS) return;
     if (!item || typeof item !== "object") return;
     const data = safeDataImageSrc(item.data != null ? item.data : "");
-    if (!data) return;
+    const storageId = typeof item.storageId === "string" && item.storageId.trim() ? item.storageId.trim() : "";
+    if (!data && !storageId) return;
     const name = typeof item.name === "string" && item.name.trim() ? item.name.trim() : "photo";
-    out.push({ name, data });
+    const row = { name, data: data || "" };
+    if (storageId) row.storageId = storageId;
+    out.push(row);
   });
   return out;
 }
@@ -3120,10 +3141,11 @@ async function logout() {
 function renderItemPhoto(node, photo) {
   const preview = node.querySelector(".item-photo-preview");
   preview.innerHTML = "";
-  if (!photo || !photo.data) return;
+  const src = photoDisplaySrc(photo);
+  if (!src) return;
   const figure = document.createElement("figure");
   const image = document.createElement("img");
-  image.src = photo.data;
+  image.src = src;
   image.alt = photo.name || t("img.altCp");
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
@@ -3196,10 +3218,11 @@ function addChecklistItem(textOrLocales = "", checked = false, comment = "", pho
 function renderExtraCostsPhoto() {
   if (!el.extraCostsPhotoPreview) return;
   el.extraCostsPhotoPreview.innerHTML = "";
-  if (!extraCostsPhoto || !extraCostsPhoto.data) return;
+  const src = photoDisplaySrc(extraCostsPhoto);
+  if (!src) return;
   const figure = document.createElement("figure");
   const image = document.createElement("img");
-  image.src = extraCostsPhoto.data;
+  image.src = src;
   image.alt = extraCostsPhoto.name || t("chk.extraPhotoHead");
   const removeBtn = document.createElement("button");
   removeBtn.type = "button";
@@ -4049,7 +4072,7 @@ function renderPhotoPreview() {
     const figure = document.createElement("figure");
     const image = document.createElement("img");
     const button = document.createElement("button");
-    image.src = safeDataImageSrc(photo.data) || "";
+    image.src = photoDisplaySrc(photo) || "";
     image.alt = photo.name;
     button.type = "button";
     button.setAttribute("aria-label", "Bild entfernen");
@@ -4367,7 +4390,7 @@ function buildReportHtml(entry) {
               <span class="result-mark ${item.checked ? "ok" : ""}">${item.checked ? "✓" : "!"}</span>
               <div>
                 <span>${escapeHtml(itemDisplayForSubmissionItem(item, entry.checklistTemplateId))}</span>
-                ${item.photo && safeDataImageSrc(item.photo.data) ? `<img src="${safeDataImageSrc(item.photo.data)}" alt="${escapeHtml(item.photo.name || t("img.altCp"))}" />` : ""}
+                ${item.photo ? photoDisplayImgHtml(item.photo, item.photo.name || t("img.altCp")) : ""}
               </div>
             </li>
           `).join("")}
@@ -5119,7 +5142,7 @@ function renderReview() {
   const reportHtml = buildReportHtml(entry);
   const mailDraftUrl = buildMailPreviewUrl(entry);
   const extraPhoto = entry.extraCosts && entry.extraCosts.photo;
-  const extraPhotoHref = extraPhoto ? safeDataImageSrc(extraPhoto.data) : "";
+  const extraPhotoHref = extraPhoto ? photoDisplaySrc(extraPhoto) : "";
   const extraPhotoDownloadName = sanitizeDownloadFilename(extraPhoto && extraPhoto.name);
   el.reviewPanel.innerHTML = `
     <div class="review-header">
@@ -5146,7 +5169,7 @@ function renderReview() {
           <div>
             <span>${escapeHtml(itemDisplayForSubmissionItem(item, entry.checklistTemplateId))}</span>
             ${item.comment ? `<small class="item-note">${escapeHtml(t("review.itemCommentLbl"))} ${escapeHtml(item.comment)}</small>` : ""}
-            ${item.photo && safeDataImageSrc(item.photo.data) ? `<img src="${safeDataImageSrc(item.photo.data)}" alt="${escapeHtml(item.photo.name || t("img.altCp"))}" />` : ""}
+            ${item.photo ? photoDisplayImgHtml(item.photo, item.photo.name || t("img.altCp")) : ""}
           </div>
         </li>
       `).join("")}
@@ -5175,10 +5198,7 @@ function renderReview() {
       : ""}
 
     <div class="photo-gallery">
-      ${entry.photos.map((photo) => {
-        const src = safeDataImageSrc(photo.data);
-        return src ? `<img src="${src}" alt="${escapeHtml(photo.name)}">` : "";
-      }).join("")}
+      ${entry.photos.map((photo) => photoDisplayImgHtml(photo, photo.name)).join("")}
     </div>
 
     <label class="review-comment">
@@ -5476,9 +5496,9 @@ function buildWorkOrderArticleHtml(row) {
   const resultImgs = sanitizeWorkOrderChefImages(entry.workOrderResultImages || []);
   const chefPhotosHtml = imgs.length
     ? `<div class="work-order-chef-photos"><p class="work-order-subline"><strong>${escapeHtml(t("wo.chefPhotosLbl"))}</strong></p><div class="work-order-photo-row">${imgs.map((ph) => {
-      const src = safeDataImageSrc(ph.data);
+      const src = photoDisplaySrc(ph);
       return src
-        ? `<a class="work-order-photo-link" href="${src}" target="_blank" rel="noopener noreferrer"><img class="work-order-chef-thumb" src="${src}" alt="${escapeHtml(ph.name || "photo")}" /></a>`
+        ? `<a class="work-order-photo-link" href="${src}" target="_blank" rel="noopener noreferrer"><img class="work-order-chef-thumb" src="${src}" alt="${escapeHtml(ph.name || "photo")}" loading="lazy" /></a>`
         : "";
     }).join("")}</div></div>`
     : "";
@@ -5498,9 +5518,9 @@ function buildWorkOrderArticleHtml(row) {
     </div>`;
   } else if (resultImgs.length) {
     resultPhotosHtml = `<div class="work-order-chef-photos"><p class="work-order-subline"><strong>${escapeHtml(t("wo.resultPhotosLbl"))}</strong></p><div class="work-order-photo-row">${resultImgs.map((ph) => {
-      const src = safeDataImageSrc(ph.data);
+      const src = photoDisplaySrc(ph);
       return src
-        ? `<a class="work-order-photo-link" href="${src}" target="_blank" rel="noopener noreferrer"><img class="work-order-chef-thumb" src="${src}" alt="${escapeHtml(ph.name || "photo")}" /></a>`
+        ? `<a class="work-order-photo-link" href="${src}" target="_blank" rel="noopener noreferrer"><img class="work-order-chef-thumb" src="${src}" alt="${escapeHtml(ph.name || "photo")}" loading="lazy" /></a>`
         : "";
     }).join("")}</div></div>`;
   }
