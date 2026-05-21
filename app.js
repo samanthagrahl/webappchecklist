@@ -1,19 +1,82 @@
-const storageKey = "werkstattcheck-submissions-v1";
-const dailyAttendanceKey = "werkstattcheck-daily-attendance-v1";
-const sessionKey = "werkstattcheck-session-v1";
-const scheduleKey = "werkstattcheck-staff-schedule-v1";
-const recurringScheduleRulesKey = "werkstattcheck-recurring-schedule-rules-v1";
-const workOrdersStateKey = "werkstattcheck-work-orders-v1";
+const storageKey = "immobiliencheck-submissions-v1";
+const dailyAttendanceKey = "immobiliencheck-daily-attendance-v1";
+const sessionKey = "immobiliencheck-session-v1";
+const scheduleKey = "immobiliencheck-staff-schedule-v1";
+const recurringScheduleRulesKey = "immobiliencheck-recurring-schedule-rules-v1";
+const workOrdersStateKey = "immobiliencheck-work-orders-v1";
 const WORK_ORDER_ASSIGNMENT_KIND = "workOrder";
 const WORK_ORDER_MAX_CHEF_PHOTOS = 3;
 const WORK_ORDER_MAX_RESULT_PHOTOS = 5;
-const customerDbKey = "werkstattcheck-customer-db-v1";
-const guideDbKey = "werkstattcheck-guide-db-v1";
+const customerDbKey = "immobiliencheck-customer-db-v1";
+const guideDbKey = "immobiliencheck-guide-db-v1";
 const GUIDE_PDF_LANGS = ["de", "en", "es"];
 const CUSTOMER_STATUS_ACTIVE = "active";
 const CUSTOMER_STATUS_INACTIVE = "inactive";
-const checkpointCatalogKey = "werkstattcheck-checkpoint-catalog-v1";
-const checklistTemplatesKey = "werkstattcheck-checklist-templates-v2";
+const checkpointCatalogKey = "immobiliencheck-checkpoint-catalog-v1";
+const checklistTemplatesKey = "immobiliencheck-checklist-templates-v2";
+const CLOUD_SESSION_KEY = "immobiliencheck-cloud-session";
+
+const LEGACY_BROWSER_STORAGE_KEYS = [
+  ["werkstattcheck-submissions-v1", storageKey],
+  ["werkstattcheck-daily-attendance-v1", dailyAttendanceKey],
+  ["werkstattcheck-session-v1", sessionKey],
+  ["werkstattcheck-staff-schedule-v1", scheduleKey],
+  ["werkstattcheck-recurring-schedule-rules-v1", recurringScheduleRulesKey],
+  ["werkstattcheck-work-orders-v1", workOrdersStateKey],
+  ["werkstattcheck-customer-db-v1", customerDbKey],
+  ["werkstattcheck-guide-db-v1", guideDbKey],
+  ["werkstattcheck-checkpoint-catalog-v1", checkpointCatalogKey],
+  ["werkstattcheck-checklist-templates-v2", checklistTemplatesKey],
+  ["werkstattcheck-cloud-token", "immobiliencheck-cloud-token"],
+  ["werkstattcheck-cloud-session", CLOUD_SESSION_KEY],
+  ["werkstattMailApiToken", "immobiliencheckMailApiToken"]
+];
+
+function migrateLegacyBrowserStorageKeys() {
+  try {
+    LEGACY_BROWSER_STORAGE_KEYS.forEach(([legacyKey, newKey]) => {
+      if (legacyKey === newKey) return;
+      const legacyVal = localStorage.getItem(legacyKey);
+      if (!legacyVal) return;
+      if (!localStorage.getItem(newKey)) localStorage.setItem(newKey, legacyVal);
+      localStorage.removeItem(legacyKey);
+      const legacySess = sessionStorage.getItem(legacyKey);
+      if (legacySess && !sessionStorage.getItem(newKey)) sessionStorage.setItem(newKey, legacySess);
+      sessionStorage.removeItem(legacyKey);
+    });
+  } catch (e) {
+    console.warn("[storage] Legacy-Migration übersprungen:", e);
+  }
+}
+
+function cloudStore() {
+  return typeof window !== "undefined" ? window.ImmobiliencheckCloudStorage : null;
+}
+
+function appStorageGet(key) {
+  const cloud = cloudStore();
+  if (cloud && cloud.enabled) return cloud.getItem(key);
+  return localStorage.getItem(key);
+}
+
+function appStorageSet(key, value) {
+  const cloud = cloudStore();
+  if (cloud && cloud.enabled) {
+    cloud.setItem(key, value);
+    return;
+  }
+  localStorage.setItem(key, value);
+}
+
+function appStorageRemove(key) {
+  const cloud = cloudStore();
+  if (cloud && cloud.enabled) {
+    cloud.setItem(key, null);
+    return;
+  }
+  localStorage.removeItem(key);
+}
+
 const HAUS_CHECKLIST_TEMPLATE_ID = "haus_garten";
 const PUTZ_CHECKLIST_TEMPLATE_ID = "putzplan_haus";
 /** Nur „Haus & Garten“: Prüfpunkte sind einem Bereich zugeordnet (Persistenz im Vorlagen-Array). */
@@ -172,7 +235,7 @@ function submissionsVisibleToCurrentBoss() {
   return pool;
 }
 
-const WC = typeof window !== "undefined" ? window.WerkstattCheckI18n : null;
+const WC = typeof window !== "undefined" ? window.ImmobiliencheckI18n : null;
 const t = (key, vars) => (WC ? WC.t(key, vars) : key);
 function intlLocaleSafe() {
   return WC ? WC.intlLocale() : "de-DE";
@@ -501,7 +564,7 @@ function ensureHausGartenCheckpointZonesPersisted(normalizedTemplates, rawTempla
   if (!rawCps || !rawCps.length) return;
   if (!hausCheckpointsNeedZonePersist(rawCps)) return;
   bossChecklistFilterSignature = "";
-  localStorage.setItem(checklistTemplatesKey, JSON.stringify(normalizedTemplates));
+  appStorageSet(checklistTemplatesKey, JSON.stringify(normalizedTemplates));
 }
 
 function hausZoneGroupTitle(zoneId) {
@@ -743,7 +806,7 @@ function normalizeChecklistTemplatesFromStorage(parsed) {
 }
 
 function loadLegacyCheckpointCatalogForMigration() {
-  const stored = localStorage.getItem(checkpointCatalogKey);
+  const stored = appStorageGet(checkpointCatalogKey);
   if (!stored) return [...fallbackCheckpointItems];
   try {
     const parsed = JSON.parse(stored);
@@ -773,7 +836,7 @@ function buildDefaultChecklistTemplates(hausCheckpoints) {
 }
 
 function loadChecklistTemplates() {
-  const stored = localStorage.getItem(checklistTemplatesKey);
+  const stored = appStorageGet(checklistTemplatesKey);
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
@@ -790,13 +853,13 @@ function loadChecklistTemplates() {
   const rawTemplates = buildDefaultChecklistTemplates(legacyPoints);
   const normalizedFresh = normalizeChecklistTemplatesFromStorage(rawTemplates);
   const templates = normalizedFresh && normalizedFresh.length ? normalizedFresh : rawTemplates;
-  localStorage.setItem(checklistTemplatesKey, JSON.stringify(templates));
+  appStorageSet(checklistTemplatesKey, JSON.stringify(templates));
   return templates;
 }
 
 function persistChecklistTemplates() {
   bossChecklistFilterSignature = "";
-  localStorage.setItem(checklistTemplatesKey, JSON.stringify(checklistTemplates));
+  appStorageSet(checklistTemplatesKey, JSON.stringify(checklistTemplates));
 }
 
 function getChecklistTemplateById(id) {
@@ -955,7 +1018,7 @@ function refreshCustomerCheckpointOptions() {
   renderCustomerCheckpointOptions(selected);
 }
 
-let checklistTemplates = loadChecklistTemplates();
+let checklistTemplates = [];
 let checkpointManagerTemplateId = HAUS_CHECKLIST_TEMPLATE_ID;
 let activeFormChecklistTemplateId = HAUS_CHECKLIST_TEMPLATE_ID;
 let pendingCustomerCheckpointSets = {};
@@ -963,35 +1026,44 @@ let lastCustomerCheckpointTemplateChoice = HAUS_CHECKLIST_TEMPLATE_ID;
 let bossChecklistFilterSignature = "";
 /** Zuletzt für Checklisten-Spantexte synchrone UI-Sprache (für Locale-Wechsel). */
 let checkpointFormSyncedUiLang = null;
-let customerDb = loadCustomerDb();
-let guideDb = loadGuideDb();
+let customerDb = [];
+let guideDb = [];
 /** Wird von loadSubmissions gesetzt, wenn eine Kunden-Mail aus Stammdaten ergänzt wurde. */
 let submissionEmailBackfillDirty = false;
-let submissions = loadSubmissions();
-if (submissionEmailBackfillDirty) {
-  void persist().catch((err) => console.error(err));
-}
-let dailyAttendanceRecords = loadDailyAttendance();
+let submissions = [];
+let dailyAttendanceRecords = [];
 let dailyCorrectionPanelExpanded = false;
 let dailyCorrectionHydratedDate = "";
 let currentRole = null;
 let activeChecklistId = null;
 let uploadedPhotos = [];
-let currentSession = loadSession();
-enrichCurrentSessionFromUsers();
+let currentSession = null;
 let currentMailPreviewUrl = null;
-let staffSchedule = loadSchedule();
-let recurringScheduleRules = loadRecurringScheduleRules();
-(function migrateRecurringRulesEffectiveFrom() {
-  let changed = false;
+let staffSchedule = {};
+let recurringScheduleRules = [];
+let workOrders = [];
+
+function hydrateAppStateFromStorage() {
+  checklistTemplates = loadChecklistTemplates();
+  customerDb = loadCustomerDb();
+  guideDb = loadGuideDb();
+  submissionEmailBackfillDirty = false;
+  submissions = loadSubmissions();
+  if (submissionEmailBackfillDirty) {
+    void persist().catch((err) => console.error(err));
+  }
+  dailyAttendanceRecords = loadDailyAttendance();
+  staffSchedule = loadSchedule();
+  recurringScheduleRules = loadRecurringScheduleRules();
+  let recurringMigrateChanged = false;
   recurringScheduleRules.forEach((rule) => {
     if (!rule || String(rule.effectiveFromIso || "").trim()) return;
     rule.effectiveFromIso = toIsoDate(new Date());
-    changed = true;
+    recurringMigrateChanged = true;
   });
-  if (changed) persistRecurringScheduleRules();
-})();
-let workOrders = loadWorkOrders();
+  if (recurringMigrateChanged) persistRecurringScheduleRules();
+  workOrders = loadWorkOrders();
+}
 let selectedCalendarDate = toIsoDate(new Date());
 let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let activeSection = "checklist";
@@ -1245,7 +1317,7 @@ function toIsoDate(date) {
 }
 
 function loadSchedule() {
-  const stored = localStorage.getItem(scheduleKey);
+  const stored = appStorageGet(scheduleKey);
   if (!stored) return {};
   try {
     return JSON.parse(stored);
@@ -1255,7 +1327,7 @@ function loadSchedule() {
 }
 
 function persistSchedule() {
-  localStorage.setItem(scheduleKey, JSON.stringify(staffSchedule));
+  appStorageSet(scheduleKey, JSON.stringify(staffSchedule));
 }
 
 function normalizeRecurringScheduleRule(rule) {
@@ -1270,7 +1342,7 @@ function normalizeRecurringScheduleRule(rule) {
 }
 
 function loadRecurringScheduleRules() {
-  const stored = localStorage.getItem(recurringScheduleRulesKey);
+  const stored = appStorageGet(recurringScheduleRulesKey);
   if (!stored) return [];
   try {
     const parsed = JSON.parse(stored);
@@ -1282,7 +1354,7 @@ function loadRecurringScheduleRules() {
 }
 
 function persistRecurringScheduleRules() {
-  localStorage.setItem(recurringScheduleRulesKey, JSON.stringify(recurringScheduleRules));
+  appStorageSet(recurringScheduleRulesKey, JSON.stringify(recurringScheduleRules));
 }
 
 function isWorkOrderAssignment(entry) {
@@ -1314,7 +1386,7 @@ function cloneWorkOrderChefImagesForStorage(raw) {
 }
 
 function loadWorkOrders() {
-  const stored = localStorage.getItem(workOrdersStateKey);
+  const stored = appStorageGet(workOrdersStateKey);
   if (!stored) return [];
   try {
     const parsed = JSON.parse(stored);
@@ -1326,7 +1398,7 @@ function loadWorkOrders() {
 }
 
 function persistWorkOrders() {
-  localStorage.setItem(workOrdersStateKey, JSON.stringify(workOrders));
+  appStorageSet(workOrdersStateKey, JSON.stringify(workOrders));
 }
 
 function normalizeWorkOrderStateRow(raw) {
@@ -1799,7 +1871,7 @@ function migrateScheduleTemplateIdsInPlace() {
 }
 
 function loadCustomerDb() {
-  const stored = localStorage.getItem(customerDbKey);
+  const stored = appStorageGet(customerDbKey);
   if (!stored) return [];
   try {
     const parsed = JSON.parse(stored);
@@ -1818,11 +1890,11 @@ function loadCustomerDb() {
 }
 
 function persistCustomerDb() {
-  localStorage.setItem(customerDbKey, JSON.stringify(customerDb));
+  appStorageSet(customerDbKey, JSON.stringify(customerDb));
 }
 
 function loadGuideDb() {
-  const stored = localStorage.getItem(guideDbKey);
+  const stored = appStorageGet(guideDbKey);
   if (!stored) return [];
   try {
     const parsed = JSON.parse(stored);
@@ -1834,7 +1906,7 @@ function loadGuideDb() {
 }
 
 function persistGuideDb() {
-  localStorage.setItem(guideDbKey, JSON.stringify(guideDb));
+  appStorageSet(guideDbKey, JSON.stringify(guideDb));
 }
 
 function sanitizeGuidePdfs(raw) {
@@ -2145,9 +2217,11 @@ function syncExtraCostLedgerForSubmittedEntry(entry) {
 }
 
 function loadSession() {
+  const cloud = cloudStore();
   const sessionStored = sessionStorage.getItem(sessionKey);
   const localStored = localStorage.getItem(sessionKey);
-  const stored = sessionStored || localStored;
+  const cloudStored = cloud && cloud.enabled ? cloud.getItem(CLOUD_SESSION_KEY) : null;
+  const stored = cloudStored || sessionStored || localStored;
   if (!stored) return null;
   try {
     return JSON.parse(stored);
@@ -2157,8 +2231,12 @@ function loadSession() {
 }
 
 function persistSession(session, remember = false) {
+  const cloud = cloudStore();
   if (session) {
     const serialized = JSON.stringify(session);
+    if (cloud && cloud.enabled) {
+      cloud.setItem(CLOUD_SESSION_KEY, serialized);
+    }
     if (remember) {
       localStorage.setItem(sessionKey, serialized);
       sessionStorage.removeItem(sessionKey);
@@ -2167,13 +2245,16 @@ function persistSession(session, remember = false) {
       localStorage.removeItem(sessionKey);
     }
   } else {
+    if (cloud && cloud.enabled) {
+      void cloud.logout();
+    }
     localStorage.removeItem(sessionKey);
     sessionStorage.removeItem(sessionKey);
   }
 }
 
 function loadSubmissions() {
-  const stored = localStorage.getItem(storageKey);
+  const stored = appStorageGet(storageKey);
   if (!stored) {
     return [
       {
@@ -2521,7 +2602,7 @@ async function compactAllSubmissionPhotos(entries, maxSide, quality) {
  */
 async function persist() {
   const write = () => {
-    localStorage.setItem(storageKey, JSON.stringify(submissions));
+    appStorageSet(storageKey, JSON.stringify(submissions));
   };
 
   try {
@@ -2594,7 +2675,7 @@ function normalizeDailyAttendanceRecord(raw) {
 }
 
 function loadDailyAttendance() {
-  const stored = localStorage.getItem(dailyAttendanceKey);
+  const stored = appStorageGet(dailyAttendanceKey);
   if (!stored) return [];
   try {
     const parsed = JSON.parse(stored);
@@ -2606,7 +2687,7 @@ function loadDailyAttendance() {
 }
 
 function persistDailyAttendance() {
-  localStorage.setItem(dailyAttendanceKey, JSON.stringify(dailyAttendanceRecords));
+  appStorageSet(dailyAttendanceKey, JSON.stringify(dailyAttendanceRecords));
 }
 
 function getDailyAttendanceRecord(username, dateIso) {
@@ -2884,9 +2965,56 @@ function applyDefaultStatusFiltersOnLogin(role) {
   }
 }
 
-function login(username, password, remember = false) {
+async function login(username, password, remember = false) {
   const normalizedUsername = username.trim().toLowerCase();
   const normalizedPassword = password.trim();
+  const cloud = cloudStore();
+  if (cloud && cloud.enabled) {
+    const result = await cloud.login(normalizedUsername, normalizedPassword, remember);
+    if (!result.ok) {
+      if (el.loginError) {
+        el.loginError.textContent = t("auth.error");
+        el.loginError.classList.remove("hidden");
+      }
+      showToast(t("toast.loginFail"));
+      return;
+    }
+    hydrateAppStateFromStorage();
+    const user = result.user;
+    if (el.loginError) {
+      el.loginError.textContent = "";
+      el.loginError.classList.add("hidden");
+    }
+    activeChecklistId = null;
+    employeeChecklistUnlocked = false;
+    activeAssignmentId = "";
+    lockedCustomerName = "";
+    currentSession = {
+      username: user.username,
+      role: user.role,
+      label: user.label
+    };
+    if (Array.isArray(user.manageEmployeeUsernames) && user.manageEmployeeUsernames.length) {
+      currentSession.manageEmployeeUsernames = user.manageEmployeeUsernames.slice();
+    }
+    if (Array.isArray(user.allowedChecklistTemplateIds) && user.allowedChecklistTemplateIds.length) {
+      currentSession.allowedChecklistTemplateIds = user.allowedChecklistTemplateIds.slice();
+      const defaultTpl = user.allowedChecklistTemplateIds[0];
+      checkpointManagerTemplateId = defaultTpl;
+      activeFormChecklistTemplateId = defaultTpl;
+      lastCustomerCheckpointTemplateChoice = defaultTpl;
+    }
+    persistSession(currentSession, remember);
+    enrichCurrentSessionFromUsers();
+    applyDefaultStatusFiltersOnLogin(user.role);
+    el.sessionUser.textContent = `${user.label} (${user.username})`;
+    el.authScreen.classList.add("hidden");
+    el.appShell.classList.remove("hidden");
+    resetForm();
+    setRole(user.role);
+    showToast(t("toast.welcome", { label: user.label }));
+    return;
+  }
   const user = users.find((item) => item.username === normalizedUsername && item.password === normalizedPassword);
   if (!user) {
     if (el.loginError) {
@@ -2927,9 +3055,9 @@ function login(username, password, remember = false) {
   showToast(t("toast.welcome", { label: user.label }));
 }
 
-function logout() {
+async function logout() {
   currentSession = null;
-  persistSession(null);
+  await persistSession(null);
   currentRole = null;
   el.appShell.classList.add("hidden");
   el.authScreen.classList.remove("hidden");
@@ -4501,10 +4629,10 @@ async function downloadCustomerReportPdf(entry) {
   }
 }
 
-const MAIL_RELAY_SESSION_KEY = "werkstattMailRelayOrigin";
-const MAIL_API_TOKEN_STORAGE_KEY = "werkstattMailApiToken";
+const MAIL_RELAY_SESSION_KEY = "immobiliencheckMailRelayOrigin";
+const MAIL_API_TOKEN_STORAGE_KEY = "immobiliencheckMailApiToken";
 
-/** Wie server/index.js sanitizeEmail – vermeidet POST mit 400 invalid_recipient. */
+/** Gleiche Regeln wie Backend sanitizeEmail – vermeidet POST mit 400 invalid_recipient. */
 function isValidSmtpRecipientEmail(raw) {
   const s = String(raw || "").trim();
   return (
@@ -4736,17 +4864,21 @@ async function trySendReportViaSmtp(entry, pdfBlob, fileName) {
     return false;
   }
 
+  const cloud = cloudStore();
+  const mailPath = cloud && cloud.enabled ? "/api/v1/mail/send-report" : "/api/send-report";
   const headers = { "Content-Type": "application/json" };
-  if (caps.apiTokenRequired) {
+  if (cloud && cloud.enabled && cloud.getToken()) {
+    headers.Authorization = `Bearer ${cloud.getToken()}`;
+  } else if (caps.apiTokenRequired) {
     headers["X-Mail-Api-Token"] = (
       sessionStorage.getItem(MAIL_API_TOKEN_STORAGE_KEY) || ""
     ).trim();
   }
 
-  console.info("[Immobiliencheck] SMTP-Versuch:", `${base}/api/send-report`, { toAddr });
+  console.info("[Immobiliencheck] SMTP-Versuch:", `${base}${mailPath}`, { toAddr });
 
   try {
-    const res = await fetch(`${base}/api/send-report`, {
+    const res = await fetch(`${base}${mailPath}`, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -4756,7 +4888,7 @@ async function trySendReportViaSmtp(entry, pdfBlob, fileName) {
         pdfBase64,
         pdfFileName: fileName
       }),
-      credentials: "omit",
+      credentials: cloud && cloud.enabled ? "same-origin" : "omit",
       mode: "cors"
     });
     const payload = await res.json().catch(() => ({}));
@@ -9058,13 +9190,15 @@ el.moduleTabButtons.forEach((button) => {
 });
 el.loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  login(
+  void login(
     el.loginUsername.value.trim(),
     el.loginPassword.value,
     Boolean(el.loginRemember && el.loginRemember.checked)
   );
 });
-el.logoutButton.addEventListener("click", logout);
+el.logoutButton.addEventListener("click", () => {
+  void logout();
+});
 
 function populateLocaleSelectOptions(sel) {
   if (!sel || !WC) return;
@@ -9126,25 +9260,50 @@ if (el.workOrdersStatusFilter) {
   el.workOrdersStatusFilter.addEventListener("change", renderWorkOrdersPanel);
 }
 
-migrateScheduleTemplateIdsInPlace();
-pruneOrphanWorkOrderStates();
-resetCalendarStaffFormState();
-syncCalendarStaffFormInitialState();
-resetForm();
-resetCustomerDbForm();
-resetGuideDbForm();
-refreshCheckpointStaffUi();
-if (currentSession && users.some((user) => user.username === currentSession.username && user.role === currentSession.role)) {
-  el.sessionUser.textContent = `${currentSession.label} (${currentSession.username})`;
-  el.authScreen.classList.add("hidden");
-  el.appShell.classList.remove("hidden");
-  setRole(currentSession.role);
-} else {
-  persistSession(null);
+async function bootApp() {
+  migrateLegacyBrowserStorageKeys();
+  const cloud = cloudStore();
+  if (cloud) await cloud.init();
+  hydrateAppStateFromStorage();
+  currentSession = loadSession();
+  enrichCurrentSessionFromUsers();
+  if (cloud && cloud.enabled && cloud.getToken() && currentSession) {
+    try {
+      await cloud.loadBootstrap();
+      hydrateAppStateFromStorage();
+      currentSession = loadSession();
+      enrichCurrentSessionFromUsers();
+    } catch (err) {
+      console.warn("[cloud] Bootstrap nach Token-Reload fehlgeschlagen:", err);
+      persistSession(null);
+      currentSession = null;
+    }
+  }
+  migrateScheduleTemplateIdsInPlace();
+  pruneOrphanWorkOrderStates();
+  resetCalendarStaffFormState();
+  syncCalendarStaffFormInitialState();
+  resetForm();
+  resetCustomerDbForm();
+  resetGuideDbForm();
+  refreshCheckpointStaffUi();
+  if (currentSession && (cloud && cloud.enabled
+    ? Boolean(currentSession.username && currentSession.role)
+    : users.some((user) => user.username === currentSession.username && user.role === currentSession.role))) {
+    el.sessionUser.textContent = `${currentSession.label} (${currentSession.username})`;
+    el.authScreen.classList.add("hidden");
+    el.appShell.classList.remove("hidden");
+    setRole(currentSession.role);
+  } else {
+    persistSession(null);
+    currentSession = null;
+  }
+
+  if (WC) {
+    populateLocaleSelectOptions(el.localeSelectAuth);
+    populateLocaleSelectOptions(el.localeSelectSidebar);
+    WC.setUiLocale(WC.getLocale());
+  }
 }
 
-if (WC) {
-  populateLocaleSelectOptions(el.localeSelectAuth);
-  populateLocaleSelectOptions(el.localeSelectSidebar);
-  WC.setUiLocale(WC.getLocale());
-}
+void bootApp();

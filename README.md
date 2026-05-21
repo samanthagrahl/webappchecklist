@@ -1,47 +1,56 @@
-# WerkstattCheck
+# Immobiliencheck
 
-Eine Webapp fuer kleine Handwerksbetriebe:
+Eine Webapp für Immobilienprüfungen und Handwerksbetriebe:
 
 - Mitarbeiter erfassen Checklisten, Kommentare und Bilder.
-- Checklisten werden als Entwurf gespeichert oder zur Pruefung eingereicht.
-- Der Chef prueft Einreichungen, hinterlegt einen Freigabekommentar und gibt den Bericht frei.
-- Bei Freigabe wird der Kundenbericht automatisch als gesendet markiert. Zusaetzlich kann ein E-Mail-Entwurf per `mailto:` geoeffnet werden.
-- Jeder Pruefpunkt kann einen eigenen Kurzkommentar enthalten.
+- Checklisten werden als Entwurf gespeichert oder zur Prüfung eingereicht.
+- Der Chef prüft Einreichungen, hinterlegt einen Freigabekommentar und gibt den Bericht frei.
+- Bei Freigabe wird der **Kundenbericht automatisch per SMTP** versendet (wenn `MAIL_ENABLED=true` und SMTP in `.env` gesetzt sind).
+- Ohne SMTP: E-Mail-Entwurf (`mailto:`) oder PDF-Download als Fallback.
+- Jeder Prüfpunkt kann einen eigenen Kurzkommentar enthalten.
 
-## Demo-Login
+## Demo-Login (Cloud-Seed)
 
-- Chef: `chef` / `chef123`
-- Mitarbeiter: `mitarbeiter` / `mitarbeiter123`
+- `chef` / `123` (Passwort in Produktion ändern)
+- Weitere Nutzer siehe Seed im Backend
 
-## Lokal starten
+## Lokal / Cloud starten
 
-Oeffne `index.html` direkt im Browser.
+```bash
+cp .env.example .env
+# SMTP_* und DATABASE_URL anpassen
+npm run docker:up
+docker compose exec api npm run seed
+```
 
-## Mail-Server (SMTP + Webapp aus einem Prozess)
+App: http://localhost:3847
 
-SMTP und Port liegen zentral in **`.env`** im Projektstamm (Vorlage: **`.env.example`**). Kopiere `.env.example` nach `.env` und setze `MAIL_ENABLED=true` sowie `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
+Ohne Docker nur API testen (Entwicklung):
 
-Start: `npm run start:mail` im Projektroot oder `start-mail.cmd` unter Windows — Node nutzt `server/index.js` mit `dotenv`.
+```bash
+cp .env.example .env
+# NODE_ENV=development, DATABASE_URL auf lokale Postgres-Instanz
+npm run migrate
+npm run seed
+npm start
+```
 
-Die frühere Datei `mail-service.config.json` wird nicht mehr gelesen (nur noch Umgebungsvariablen / `.env`).
+Alle Einstellungen liegen in **`.env`** (Vorlage: **`.env.example`**).
 
-## GitHub Pages Deployment
+## Produktion (Hetzner)
 
-Diese App ist eine statische Webseite und kann direkt ueber GitHub Pages deployed werden.
+Siehe [`DEPLOY-HETZNER.md`](DEPLOY-HETZNER.md) — CX33, PostgreSQL, Object Storage, Domain, TLS.
 
-1. Repository auf GitHub anlegen (hier: `samanthagrahl/checkliste`).
-2. Dateien in den `main`-Branch pushen.
-3. In GitHub unter `Settings` -> `Pages`:
-   - `Source`: `Deploy from a branch`
-   - `Branch`: `main`
-   - `Folder`: `/ (root)`
-4. Danach ist die App unter einer GitHub-Pages-URL erreichbar.
+Wichtig für automatischen Kundenbericht:
+
+- `MAIL_ENABLED=true`
+- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- App nur über HTTPS-Domain öffnen (gleiche Origin wie API)
+
+## GitHub Pages (nur Demo, ohne Cloud)
+
+Statisches Hosting ohne Server — **kein** automatischer SMTP-Versand, nur `localStorage` und `mailto:`.
 
 ## Hinweis zur Datenspeicherung
 
-Die Daten werden im `localStorage` des Browsers gespeichert. Das bedeutet:
-
-- Daten sind pro Browser/Geraet getrennt.
-- Es gibt aktuell kein zentrales Backend.
-
-## Wenn Server aktiv ist, dann Bilder bei Checkliste durch anklicken größer machen programmieren lassen
+Mit Cloud-Backend sind alle Nutzer synchron (PostgreSQL + Object Storage). Ohne Server: Daten nur im Browser (`localStorage`). Alte `werkstattcheck-*`-Schlüssel werden beim ersten Start migriert.

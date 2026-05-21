@@ -2,7 +2,8 @@
 (function (global) {
   "use strict";
 
-  var STORAGE_KEY = "werkstattcheck-ui-locale-v1";
+  var STORAGE_KEY = "immobiliencheck-ui-locale-v1";
+  var LEGACY_STORAGE_KEY = "werkstattcheck-ui-locale-v1";
 
   /** @type {Record<string,[string,string]>} jeder Eintrag [Deutsch, Englisch] */
   var PAIRS = {
@@ -631,16 +632,16 @@
     "toast.smtpSent": ["Bericht wurde per E-Mail an den Kunden gesendet (SMTP).", "Report was emailed to the customer (SMTP)."],
     "toast.smtpFailed": ["E-Mail-Versand über den Server ist fehlgeschlagen.", "Sending email through the server failed."],
     "toast.smtpNeedToken": [
-      "SMTP-Server erwartet ein API-Token — sessionStorage „werkstattMailApiToken“ setzen oder apiToken in der Konfiguration leeren.",
-      "Mail server expects an API token — set sessionStorage „werkstattMailApiToken“ or leave apiToken empty in config."
+      "SMTP-Server erwartet ein API-Token — sessionStorage „immobiliencheckMailApiToken“ setzen oder apiToken in der Konfiguration leeren.",
+      "Mail server expects an API token — set sessionStorage „immobiliencheckMailApiToken“ or leave apiToken empty in config."
     ],
     "toast.customerEmailMissing": [
       "Keine gültige Kunden-E-Mail im Eintrag. Bitte Kunden-Stammdaten (E-Mail) pflegen oder im Formular ausfüllen und Checkliste erneut speichern/einreichen.",
       "No valid customer email. Add it under customer master data or in the checklist form, then save or submit again."
     ],
     "toast.mailRelayOff": [
-      "SMTP-Versand nicht möglich: relay:false, Mail-Server nicht erreichbar oder falsche Basis-URL. Im Projektstamm `.env`: MAIL_ENABLED=true und SMTP_* setzen, Node neu starten. App z. B. unter http://127.0.0.1:3847/ öffnen. Netzwerk: POST /api/send-report und relay in /api/mail-capabilities.",
-      "Mail cannot be sent: relay is off, the mail API is unreachable, or the wrong base URL is used. In the project root `.env` set MAIL_ENABLED=true and SMTP_* values, then restart Node. Open the app (e.g. http://127.0.0.1:3847/). Check the network panel for relay:true on /api/mail-capabilities and POST /api/send-report."
+      "Automatischer E-Mail-Versand nicht aktiv: In `.env` MAIL_ENABLED=true und SMTP_* eintragen, Server neu starten. App über die Cloud-URL öffnen (z. B. https://app.deine-domain.de).",
+      "Automatic email is off: set MAIL_ENABLED=true and SMTP_* in `.env`, restart the server, and open the app via your cloud URL (e.g. https://app.your-domain.com)."
     ],
     "toast.reopened": ["Checkliste ist wieder zur Prüfung offen.", "Checklist is open for review again."],
     "toast.deletedChk": ["Checkliste wurde gelöscht.", "Checklist deleted."],
@@ -833,7 +834,21 @@
     });
   }
 
-  global.WerkstattCheckI18n = {
+  function migrateLegacyLocaleKey() {
+    try {
+      if (typeof localStorage === "undefined") return;
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy && !localStorage.getItem(STORAGE_KEY)) {
+        localStorage.setItem(STORAGE_KEY, legacy);
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+    } catch (e) {
+      //
+    }
+  }
+  migrateLegacyLocaleKey();
+
+  global.ImmobiliencheckI18n = {
     t: t,
     getLocale: getLocale,
     intlLocale: intlLocale,
