@@ -4282,15 +4282,40 @@ async function deleteChecklist(id) {
   showToast(t("toast.deletedChk"));
 }
 
-/** Statischer E-Mail-Text beim Versand (PDF enthält den ausführlichen Bericht). */
-function buildCustomerEmailBody(entry) {
+function resolveCustomerNameForEmail(entry) {
   const contact = resolveCustomerContactForReport(entry);
   let name = String(contact.name || "").trim();
   if (!name || name === "—") {
     name = String((entry && entry.customerName) || "").trim();
   }
   if (!name) name = t("report.emailDefaultName");
-  return t("report.emailBody", { name });
+  return name;
+}
+
+function customerEmailContentParts(entry) {
+  const name = resolveCustomerNameForEmail(entry);
+  return [
+    t("report.emailGreeting", { name }),
+    t("report.emailPara1"),
+    t("report.emailPara2"),
+    t("report.emailSignature")
+  ];
+}
+
+/** Statischer E-Mail-Text (Plain) — PDF enthält den ausführlichen Bericht. */
+function buildCustomerEmailBody(entry) {
+  return customerEmailContentParts(entry).join("\r\n\r\n");
+}
+
+/** HTML-Mail mit sauberen Absätzen (Gmail, Outlook, …). */
+function buildCustomerEmailHtml(entry) {
+  const lines = customerEmailContentParts(entry);
+  const htmlParas = lines.map((line, index) => {
+    const isSignature = index === lines.length - 1;
+    const margin = isSignature ? "20px 0 0 0" : "0 0 14px 0";
+    return `<p style="margin:${margin};padding:0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#1a1a1a;">${escapeHtml(line)}</p>`;
+  }).join("");
+  return `<!DOCTYPE html><html lang="${escapeHtml(intlLangSafe())}"><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:#ffffff;"><div style="margin:0;padding:20px 16px;">${htmlParas}</div></body></html>`;
 }
 
 function buildReportText(entry) {
@@ -5017,6 +5042,7 @@ async function trySendReportViaSmtp(entry, pdfBlob, fileName) {
         to: toAddr,
         subject: `${t("report.subjectPrefix")} ${entry.jobTitle}`.trim(),
         text: buildCustomerEmailBody(entry),
+        html: buildCustomerEmailHtml(entry),
         pdfBase64,
         pdfFileName: fileName
       }),
@@ -5123,7 +5149,7 @@ function buildMailPreviewUrl(entry) {
           <h1>${escapeHtml(t("report.mailTitle"))}</h1>
           <p><strong>${escapeHtml(t("report.mailTo"))}</strong> ${escapeHtml(previewEmail)}</p>
           <p><strong>${escapeHtml(t("report.mailSubject"))}</strong> ${escapeHtml(`${t("report.subjectPrefix")} ${entry.jobTitle}`)}</p>
-          <pre>${escapeHtml(buildCustomerEmailBody(entry))}</pre>
+          <div class="email-preview-body">${buildCustomerEmailHtml(entry)}</div>
           <div class="actions">
             <a class="button primary" href="${mailtoUrl}">${escapeHtml(t("report.mailOpenBtn"))}</a>
           </div>

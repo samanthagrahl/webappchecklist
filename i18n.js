@@ -396,9 +396,18 @@
     "report.pdfPrefix": ["Bericht", "Report"],
     "report.shareText": ["Prüfbericht (PDF) im Anhang.", "Inspection report attached (PDF)."],
     "report.emailDefaultName": ["Kunde", "Customer"],
-    "report.emailBody": [
-      "Guten Tag {name},\n\nim Rahmen Ihres Auftrags waren wir vor Ort in Ihrer Immobilie. Im Anhang finden Sie detaillierte Informationen und Bilder zu unserem Service. Bei Fragen oder ergänzenden Wünschen stehen wir Ihnen jederzeit gerne zur Verfügung.\n\nMit Herz und Hand - Ihre Familie Swiderski",
-      "Hello {name},\n\nAs part of your assignment we were on site at your property. You will find detailed information and images about our service in the attachment. If you have any questions or additional requests, we are always happy to help.\n\nWith heart and hand — Your Swiderski family"
+    "report.emailGreeting": ["Guten Tag {name},", "Hello {name},"],
+    "report.emailPara1": [
+      "im Rahmen Ihres Auftrags waren wir vor Ort in Ihrer Immobilie.",
+      "As part of your assignment we were on site at your property."
+    ],
+    "report.emailPara2": [
+      "Im Anhang finden Sie detaillierte Informationen und Bilder zu unserem Service. Bei Fragen oder ergänzenden Wünschen stehen wir Ihnen jederzeit gerne zur Verfügung.",
+      "You will find detailed information and images about our service in the attachment. If you have any questions or additional requests, we are always happy to help."
+    ],
+    "report.emailSignature": [
+      "Mit Herz und Hand - Ihre Familie Swiderski",
+      "With heart and hand — Your Swiderski family"
     ],
     "report.pdfHintAttach": [
       "Das PDF zum Kundenbericht liegt in Ihrem Download-Ordner. Bitte in der E-Mail-App als Anhang einfügen.",

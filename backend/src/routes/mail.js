@@ -41,6 +41,7 @@ router.post("/send-report", requireAuth, async (req, res) => {
   if (!to) return res.status(400).json({ ok: false, error: "invalid_recipient" });
   const subject = String(body.subject || "").trim().slice(0, 998);
   const text = String(body.text || "").trim();
+  const html = String(body.html || "").trim();
   const pdfBase64 = String(body.pdfBase64 || "").trim();
   const pdfFileName = String(body.pdfFileName || "kundenbericht.pdf").trim().slice(0, 200);
   const attachments = [];
@@ -53,13 +54,19 @@ router.post("/send-report", requireAuth, async (req, res) => {
   }
   try {
     const transport = createTransport();
-    await transport.sendMail({
+    const mail = {
       from: config.mail.from || config.mail.user,
       to,
       subject: subject || "Kundenbericht",
-      text: text || "",
       attachments
-    });
+    };
+    if (html) {
+      mail.html = html;
+      mail.text = text || html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    } else {
+      mail.text = text || "";
+    }
+    await transport.sendMail(mail);
     return res.json({ ok: true });
   } catch (err) {
     console.error("[mail/send-report]", err);
