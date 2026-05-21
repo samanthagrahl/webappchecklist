@@ -4905,15 +4905,19 @@ function buildReportHtml(entry) {
   `;
 }
 
+function buildCustomerReportEmailSubject() {
+  return t("report.emailSubjectLine");
+}
+
 function openMailDraft(entry) {
-  const subject = encodeURIComponent(`${t("report.subjectPrefix")} ${entry.jobTitle}`);
+  const subject = encodeURIComponent(buildCustomerReportEmailSubject());
   const body = encodeURIComponent(buildCustomerEmailBody(entry));
   const email = resolveCustomerEmailForEntry(entry) || "";
   return `mailto:${email}?subject=${subject}&body=${body}`;
 }
 
 function openMailDraftWithPdfHint(entry) {
-  const subject = encodeURIComponent(`${t("report.subjectPrefix")} ${entry.jobTitle}`);
+  const subject = encodeURIComponent(buildCustomerReportEmailSubject());
   const body = encodeURIComponent(`${t("report.pdfHintAttach")}\n\n${buildCustomerEmailBody(entry)}`);
   const addr = resolveCustomerEmailForEntry(entry) || "";
   return `mailto:${addr}?subject=${subject}&body=${body}`;
@@ -5474,7 +5478,7 @@ async function trySendReportViaSmtp(entry, pdfBlob, fileName) {
       headers,
       body: JSON.stringify({
         to: toAddr,
-        subject: `${t("report.subjectPrefix")} ${entry.jobTitle}`.trim(),
+        subject: buildCustomerReportEmailSubject(),
         text: buildCustomerEmailBody(entry),
         html: buildCustomerEmailHtml(entry),
         pdfBase64,
@@ -5529,7 +5533,7 @@ async function sendCustomerEmailWithPdf(entry, pdfBlob) {
       try {
         await navigator.share({
           files: [shareFile],
-          title: `${t("report.subjectPrefix")} ${entry.jobTitle}`.trim(),
+          title: buildCustomerReportEmailSubject(),
           text: t("report.shareText")
         });
         markSent();
@@ -5582,7 +5586,7 @@ function buildMailPreviewUrl(entry) {
         <div class="card">
           <h1>${escapeHtml(t("report.mailTitle"))}</h1>
           <p><strong>${escapeHtml(t("report.mailTo"))}</strong> ${escapeHtml(previewEmail)}</p>
-          <p><strong>${escapeHtml(t("report.mailSubject"))}</strong> ${escapeHtml(`${t("report.subjectPrefix")} ${entry.jobTitle}`)}</p>
+          <p><strong>${escapeHtml(t("report.mailSubject"))}</strong> ${escapeHtml(buildCustomerReportEmailSubject())}</p>
           <div class="email-preview-body">${buildCustomerEmailHtml(entry)}</div>
           <div class="actions">
             <a class="button primary" href="${mailtoUrl}">${escapeHtml(t("report.mailOpenBtn"))}</a>

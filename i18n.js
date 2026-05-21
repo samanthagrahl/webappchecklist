@@ -448,6 +448,10 @@
     "report.mailSubject": ["Betreff:", "Subject:"],
     "report.mailOpenBtn": ["E-Mail-App öffnen", "Open mail app"],
     "report.subjectPrefix": ["Bericht:", "Report:"],
+    "report.emailSubjectLine": [
+      "Kundenbericht – Swiderski Property Management",
+      "Customer report – Swiderski Property Management"
+    ],
     "report.pdfPrefix": ["Bericht", "Report"],
     "report.shareText": ["Prüfbericht (PDF) im Anhang.", "Inspection report attached (PDF)."],
     "report.emailDefaultName": ["Kunde", "Customer"],
