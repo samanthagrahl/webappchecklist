@@ -170,15 +170,16 @@ function getDefaultChecklistTemplateIdForSession() {
   return HAUS_CHECKLIST_TEMPLATE_ID;
 }
 
-function isFullChefSession() {
-  return Boolean(currentSession && currentSession.username === "chef");
+/** Voller Chef (nicht eingeschränkt wie Kristina) — Kundendatenbank, Prüfpunkte, alle Filter. */
+function isFullBossAccount(session) {
+  const s = session || currentSession;
+  if (!s || s.role !== "boss") return false;
+  const arr = s.manageEmployeeUsernames;
+  return !Array.isArray(arr) || !arr.length;
 }
 
-/** Voller Chef (nicht eingeschränkt wie Kristina) — u. a. Mitarbeiterverwaltung. */
-function isFullBossAccount(session) {
-  if (!session || session.role !== "boss") return false;
-  const arr = session.manageEmployeeUsernames;
-  return !Array.isArray(arr) || !arr.length;
+function hasFullChefCapabilities() {
+  return isFullBossAccount(currentSession);
 }
 
 function mapDirectoryUserRow(raw) {
@@ -289,7 +290,7 @@ function bossMayManageAssignmentEmployee(employeeUsername) {
 }
 
 function isWorkOrderManagementViewer() {
-  return isFullChefSession() || isRestrictedBossSession();
+  return hasFullChefCapabilities() || isRestrictedBossSession();
 }
 
 function assertBossMayAccessSubmission(entry) {
@@ -2198,7 +2199,7 @@ function resetGuideDbForm() {
 }
 
 function canAccessStaffAdmin() {
-  return isFullBossAccount(currentSession) || isFullChefSession();
+  return hasFullChefCapabilities();
 }
 
 function renderStaffAdminRoleFields() {
@@ -2521,7 +2522,7 @@ function renderGuideDownloadButtons(entry, includeAdmin) {
 
 function renderGuideDb() {
   if (!el.guideDbList) return;
-  const isChef = isFullChefSession();
+  const isChef = hasFullChefCapabilities();
   if (el.guideDbForm) el.guideDbForm.classList.toggle("hidden", !isChef);
   if (!guideDb.length) {
     el.guideDbList.innerHTML = `<div class="guide-db-item"><p>${escapeHtml(t("guide.empty"))}</p></div>`;
@@ -2583,7 +2584,7 @@ function updateGuideEntry(id, nameDe, nameEn, pdfs) {
 
 function startEditGuideEntry(id) {
   const entry = guideDb.find((g) => g.id === id);
-  if (!entry || !isFullChefSession()) return;
+  if (!entry || !hasFullChefCapabilities()) return;
   activeGuideDbId = id;
   if (el.guideNameDe) el.guideNameDe.value = entry.nameDe || "";
   if (el.guideNameEn) el.guideNameEn.value = entry.nameEn || "";
@@ -2608,7 +2609,7 @@ function deleteGuideEntry(id) {
 
 function positionGuideDbNavTab() {
   if (!el.guideDbTab || !el.moduleTabs) return;
-  if (isFullChefSession() && el.customerDbTab) {
+  if (hasFullChefCapabilities() && el.customerDbTab) {
     const next = el.customerDbTab.nextElementSibling;
     if (next !== el.guideDbTab) {
       el.moduleTabs.insertBefore(el.guideDbTab, el.customerDbTab.nextSibling);
@@ -3354,11 +3355,8 @@ function getEmployeeLabelByUsername(username) {
 
 function getAvailableSections() {
   const sections = ["checklist", "workOrder", "guideDb", "calendar", "worktime"];
-  if (isFullChefSession()) {
+  if (hasFullChefCapabilities()) {
     return sections.concat(["customerDb", "checkpoints", "staffAdmin"]);
-  }
-  if (isFullBossAccount(currentSession)) {
-    return sections.concat(["staffAdmin"]);
   }
   if (currentSession && currentSession.role === "employee") {
     return ["checklist", "workOrder", "calendar", "worktime", "guideDb"];
@@ -3386,13 +3384,13 @@ function setActiveSection(section) {
 }
 
 function renderSectionVisibility() {
-  const isFullChef = isFullChefSession();
+  const isFullAdmin = hasFullChefCapabilities();
   const isRestrictedBoss = isRestrictedBossSession();
-  el.customerDbTab.classList.toggle("hidden", !isFullChef);
+  el.customerDbTab.classList.toggle("hidden", !isFullAdmin);
   if (el.guideDbTab) el.guideDbTab.classList.remove("hidden");
   positionGuideDbNavTab();
   el.worktimeTab.classList.remove("hidden");
-  el.checkpointTab.classList.toggle("hidden", !isFullChef);
+  el.checkpointTab.classList.toggle("hidden", !isFullAdmin);
   const canStaffAdmin = canAccessStaffAdmin();
   if (el.staffAdminTab) el.staffAdminTab.classList.toggle("hidden", !canStaffAdmin);
   if (el.staffAdminPanel) el.staffAdminPanel.classList.toggle("hidden", activeSection !== "staffAdmin" || !canStaffAdmin);
@@ -3401,19 +3399,19 @@ function renderSectionVisibility() {
   });
 
   el.checklistSection.classList.toggle("hidden", activeSection !== "checklist");
-  el.customerDbPanel.classList.toggle("hidden", activeSection !== "customerDb" || !isFullChef);
+  el.customerDbPanel.classList.toggle("hidden", activeSection !== "customerDb" || !isFullAdmin);
   if (el.guideDbPanel) el.guideDbPanel.classList.toggle("hidden", activeSection !== "guideDb");
   el.calendarPanel.classList.toggle("hidden", activeSection !== "calendar");
   if (el.workOrdersPanel) el.workOrdersPanel.classList.toggle("hidden", activeSection !== "workOrder");
   el.worktimePanel.classList.toggle("hidden", activeSection !== "worktime");
-  el.checkpointPanel.classList.toggle("hidden", activeSection !== "checkpoints" || !isFullChef);
+  el.checkpointPanel.classList.toggle("hidden", activeSection !== "checkpoints" || !isFullAdmin);
 
   const employeeDayWorkVisible = Boolean(activeSection === "worktime" && currentSession && currentSession.role === "employee");
   const chefWorktimeSummaryVisible = Boolean(
     activeSection === "worktime"
     && currentSession
     && currentSession.role === "boss"
-    && (isFullChef || isRestrictedBoss)
+    && (isFullAdmin || isRestrictedBoss)
   );
   if (el.employeeDayWorkPanel) el.employeeDayWorkPanel.classList.toggle("hidden", !employeeDayWorkVisible);
   if (el.chefWorktimeSummaryPanel) el.chefWorktimeSummaryPanel.classList.toggle("hidden", !chefWorktimeSummaryVisible);
@@ -3441,7 +3439,7 @@ function renderSectionVisibility() {
   const showChecklist = activeSection === "checklist";
   el.employeeView.classList.toggle("active", showChecklist && currentRole === "employee");
   el.bossView.classList.toggle("active", showChecklist && currentRole === "boss");
-  const showBossFilters = showChecklist && currentRole === "boss" && (isFullChef || isRestrictedBoss);
+  const showBossFilters = showChecklist && currentRole === "boss" && (isFullAdmin || isRestrictedBoss);
   if (el.bossFilterPanel) el.bossFilterPanel.classList.toggle("hidden", !showBossFilters);
   else if (el.bossSearchRow) el.bossSearchRow.classList.toggle("hidden", !showBossFilters);
 
@@ -5729,7 +5727,7 @@ function renderLists() {
   const customerQuery = el.bossCustomerFilter.value.trim().toLowerCase();
   const projectQuery = el.bossProjectFilter.value.trim().toLowerCase();
   const extraCostsFilter = el.bossExtraCostsFilter ? el.bossExtraCostsFilter.value : "all";
-  const canUseBossFilters = isFullChefSession() || isRestrictedBossSession();
+  const canUseBossFilters = hasFullChefCapabilities() || isRestrictedBossSession();
   if (canUseBossFilters) ensureBossChecklistFilterOptions();
   const checklistFilterVal = el.bossChecklistFilter ? el.bossChecklistFilter.value : "all";
   const filteredByStatus = filter === "all" ? submissions : submissions.filter((entry) => entry.status === filter);
@@ -5809,7 +5807,7 @@ function collectWorkOrderRowsForViewer() {
     if (!Array.isArray(day)) return;
     day.forEach((entry) => {
       if (!entry || isRecurringOccurrenceSkipEntry(entry) || !isWorkOrderAssignment(entry)) return;
-      if (isFullChefSession()) {
+      if (hasFullChefCapabilities()) {
         /* alle */
       } else if (managed && managed.length) {
         if (!managed.includes(entry.employeeUsername || "")) return;
@@ -5861,10 +5859,10 @@ function syncWorkOrdersEmployeeFilterDropdown() {
   const sel = el.workOrdersEmployeeFilter;
   const wrap = el.workOrdersEmpFilterWrap;
   const managed = getManagedEmployeeUsernamesForSession();
-  const showEmp = isFullChefSession() || (managed && managed.length > 1);
+  const showEmp = hasFullChefCapabilities() || (managed && managed.length > 1);
   if (wrap) wrap.classList.toggle("hidden", !showEmp);
   if (!sel || !showEmp) return;
-  const pool = isFullChefSession() ? getEmployeeUsers() : getEmployeeUsers().filter((u) => managed.includes(u.username));
+  const pool = hasFullChefCapabilities() ? getEmployeeUsers() : getEmployeeUsers().filter((u) => managed.includes(u.username));
   const preserved = sel.value || "";
   sel.innerHTML = `<option value="">${escapeHtml(t("cal.allStaff"))}</option>${
     pool.map((u) => `<option value="${escapeHtml(u.username)}">${escapeHtml(u.label)}</option>`).join("")
@@ -6078,7 +6076,7 @@ function renderWorkOrdersPanel() {
   syncWorkOrdersEmployeeFilterDropdown();
 
   if (el.workOrdersSearchRow) {
-    el.workOrdersSearchRow.classList.toggle("work-orders-search-row--full", isFullChefSession());
+    el.workOrdersSearchRow.classList.toggle("work-orders-search-row--full", hasFullChefCapabilities());
   }
 
   const allRows = collectWorkOrderRowsForViewer();
@@ -6102,7 +6100,7 @@ function renderWorkOrdersPanel() {
   const customerQuery = custEl && custEl.value ? custEl.value.trim().toLowerCase() : "";
   const projectQuery = projEl && projEl.value ? projEl.value.trim().toLowerCase() : "";
   const managedWo = getManagedEmployeeUsernamesForSession();
-  const showEmpOnWoCard = isFullChefSession() || (managedWo && managedWo.length > 1);
+  const showEmpOnWoCard = hasFullChefCapabilities() || (managedWo && managedWo.length > 1);
   const empFilter = showEmpOnWoCard && empEl && empEl.value ? String(empEl.value).trim() : "";
   const statusFilterVal = statusEl && statusEl.value ? statusEl.value : "all";
 
@@ -6993,7 +6991,7 @@ function renderEmployeeDailyWorkPanel() {
 
 function renderWorktimeSummary() {
   if (!el.worktimeList || !currentSession || currentSession.role !== "boss") return;
-  if (!isFullChefSession() && !isRestrictedBossSession()) return;
+  if (!hasFullChefCapabilities() && !isRestrictedBossSession()) return;
 
   syncChefWorktimePeriodInput();
   let period = getChefWorktimePeriodBounds();
@@ -9629,7 +9627,7 @@ GUIDE_PDF_LANGS.forEach((lang) => {
 if (el.guideDbForm) {
   el.guideDbForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    if (!isFullChefSession()) return;
+    if (!hasFullChefCapabilities()) return;
     const nameDe = el.guideNameDe ? el.guideNameDe.value.trim() : "";
     const nameEn = el.guideNameEn ? el.guideNameEn.value.trim() : "";
     const pdfs = sanitizeGuidePdfs(pendingGuidePdfs);
