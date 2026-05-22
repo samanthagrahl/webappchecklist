@@ -1546,11 +1546,12 @@ async function resolveImageDataForPdf(photo) {
   return "";
 }
 
-function sanitizeWorkOrderChefImages(raw) {
+function sanitizeWorkOrderChefImages(raw, maxCount) {
+  const max = Number.isFinite(maxCount) ? maxCount : WORK_ORDER_MAX_CHEF_PHOTOS;
   if (!Array.isArray(raw)) return [];
   const out = [];
   raw.forEach((item) => {
-    if (out.length >= WORK_ORDER_MAX_CHEF_PHOTOS) return;
+    if (out.length >= max) return;
     if (!item || typeof item !== "object") return;
     const data = safeDataImageSrc(item.data != null ? item.data : "");
     const storageId = typeof item.storageId === "string" && item.storageId.trim() ? item.storageId.trim() : "";
@@ -1563,8 +1564,34 @@ function sanitizeWorkOrderChefImages(raw) {
   return out;
 }
 
+function sanitizeWorkOrderResultImages(raw) {
+  return sanitizeWorkOrderChefImages(raw, WORK_ORDER_MAX_RESULT_PHOTOS);
+}
+
+function mapWorkOrderResultPhotosForReport(raw) {
+  return sanitizeWorkOrderResultImages(raw)
+    .filter((ph) => photoHasDisplaySrc(ph))
+    .map((ph, idx) => ({
+      name: ph.name || t("wo.resultPhotoPdfLbl", { n: idx + 1 }),
+      data: ph.data || "",
+      storageId: ph.storageId || ""
+    }));
+}
+
 function cloneWorkOrderChefImagesForStorage(raw) {
-  return sanitizeWorkOrderChefImages(raw).map((p) => ({ name: p.name, data: p.data }));
+  return sanitizeWorkOrderChefImages(raw).map((p) => {
+    const out = { name: p.name, data: p.data || "" };
+    if (p.storageId) out.storageId = p.storageId;
+    return out;
+  });
+}
+
+function cloneWorkOrderResultImagesForStorage(raw) {
+  return sanitizeWorkOrderResultImages(raw).map((p) => {
+    const out = { name: p.name, data: p.data || "" };
+    if (p.storageId) out.storageId = p.storageId;
+    return out;
+  });
 }
 
 function loadWorkOrders() {
@@ -1640,8 +1667,7 @@ function buildWorkOrderReportEntry(row) {
   const projectLabel = String(entry.project || "").trim()
     || String(entry.customerName || "").trim()
     || t("wo.reportTitleFallback");
-  const chefPhotos = sanitizeWorkOrderChefImages(entry.workOrderImages || []);
-  const resultPhotos = sanitizeWorkOrderChefImages(entry.workOrderResultImages || []);
+  const resultPhotos = mapWorkOrderResultPhotosForReport(entry.workOrderResultImages || []);
   const completedAt = stateRow && stateRow.status === "done"
     ? (stateRow.completedAt || stateRow.updatedAt || "")
     : "";
@@ -1667,7 +1693,7 @@ function buildWorkOrderReportEntry(row) {
     employeeLeaveAt: stateRow ? stateRow.employeeLeaveAt || "" : "",
     checklistTemplateName: t("wo.reportTypeLabel"),
     items: [],
-    photos: resultPhotos.filter((ph) => ph && ph.data).map((ph) => ({ data: ph.data }))
+    photos: resultPhotos
   };
 }
 
@@ -1781,7 +1807,7 @@ function persistWorkOrderResultImages(assignmentId, dateIso, imagesRaw) {
   if (idx < 0) return false;
   const d = String(dateIso || "").trim();
   const list = staffSchedule[d];
-  const next = cloneWorkOrderChefImagesForStorage(imagesRaw || []);
+  const next = cloneWorkOrderResultImagesForStorage(imagesRaw || []);
   const cur = Object.assign({}, list[idx], { workOrderResultImages: next });
   list[idx] = cur;
   staffSchedule[d] = list;
@@ -1797,7 +1823,7 @@ async function handleWorkOrderResultPhotoPick(assignmentId, dateIso, fileList) {
   if (idx < 0 || !staffSchedule[d]) return;
   const entry = staffSchedule[d][idx];
   if (!isWorkOrderAssignment(entry)) return;
-  let cur = sanitizeWorkOrderChefImages(entry.workOrderResultImages || []).slice();
+  let cur = sanitizeWorkOrderResultImages(entry.workOrderResultImages || []).slice();
   for (let fi = 0; fi < files.length; fi += 1) {
     if (cur.length >= WORK_ORDER_MAX_RESULT_PHOTOS) {
       showToast(t("wo.maxResultPhotos"));
@@ -1821,7 +1847,7 @@ async function handleWorkOrderResultPhotoPick(assignmentId, dateIso, fileList) {
       };
       reader.readAsDataURL(file);
     });
-    cur = sanitizeWorkOrderChefImages(cur);
+    cur = sanitizeWorkOrderResultImages(cur);
   }
   persistWorkOrderResultImages(assignmentId, dateIso, cur);
 }
@@ -1832,7 +1858,7 @@ function removeWorkOrderResultPhotoAt(assignmentId, dateIso, index) {
   const d = String(dateIso || "").trim();
   const entry = staffSchedule[d][idxEntry];
   if (!entry || !isWorkOrderAssignment(entry)) return;
-  const cur = sanitizeWorkOrderChefImages(entry.workOrderResultImages || []);
+  const cur = sanitizeWorkOrderResultImages(entry.workOrderResultImages || []);
   const rm = Number(index);
   if (!Number.isInteger(rm) || rm < 0 || rm >= cur.length) return;
   cur.splice(rm, 1);
@@ -4844,6 +4870,13 @@ function buildReportHtml(entry) {
         <h3>${escapeHtml(t("report.contract.sectionScope"))}</h3>
         <div class="work-order-closing-report-body">${closingHtml}</div>
       </section>
+      ${(entry.photos || []).length ? `
+      <section class="contract-report-section">
+        <h3>${escapeHtml(t("report.contract.imagesTitle"))}</h3>
+        <div class="contract-report-photo-grid">
+          ${(entry.photos || []).map((photo, idx) => photoDisplayImgHtml(photo, photo.name || t("wo.resultPhotoPdfLbl", { n: idx + 1 }))).join("")}
+        </div>
+      </section>` : ""}
     </div>
   `;
   }
@@ -5191,7 +5224,7 @@ async function generateCustomerReportPdfBlob(entry) {
         continue;
       }
       y += size.h + 4;
-      if (ph.name && !isWorkOrderReportEntry(entry)) {
+      if (ph.name) {
         drawParagraph(ph.name, margin, contentW, 8.5, false, muted);
       }
       y += 2;
@@ -5998,7 +6031,7 @@ function buildWorkOrderArticleHtml(row) {
   const empLabel = getEmployeeLabelByUsername(entry.employeeUsername || "");
   const isOwn = Boolean(!isWoMgr && entry.employeeUsername === (currentSession && currentSession.username));
   const imgs = sanitizeWorkOrderChefImages(entry.workOrderImages || []);
-  const resultImgs = sanitizeWorkOrderChefImages(entry.workOrderResultImages || []);
+  const resultImgs = sanitizeWorkOrderResultImages(entry.workOrderResultImages || []);
   const chefPhotosHtml = imgs.length
     ? `<div class="work-order-chef-photos"><p class="work-order-subline"><strong>${escapeHtml(t("wo.chefPhotosLbl"))}</strong></p><div class="work-order-photo-row">${imgs.map((ph) => {
       const src = photoDisplaySrc(ph);
@@ -6010,7 +6043,7 @@ function buildWorkOrderArticleHtml(row) {
   let resultPhotosHtml = "";
   if (isOwn && status !== "done") {
     const tiles = resultImgs.map((ph, i) => {
-      const src = safeDataImageSrc(ph.data);
+      const src = photoDisplaySrc(ph);
       if (!src) return "";
       return `<div class="calendar-wo-photo-tile work-order-result-tile"><img src="${src}" alt="${escapeHtml(ph.name || "photo")}" /><button type="button" class="text-button calendar-wo-photo-remove" data-wo-action="remove-result-photo" data-wo-assignment="${escapeHtml(entry.id)}" data-wo-date="${escapeHtml(dateIso)}" data-wo-photo-index="${i}" aria-label="${escapeHtml(t("wo.removePhoto"))}">\u00d7</button></div>`;
     }).join("");
@@ -8992,7 +9025,7 @@ function copySingleStaffEntryToDate(sourceIso, entryId, targetIso) {
       base.checklistTemplateId = "";
       delete base.hausGartenZoneIds;
       base.workOrderImages = cloneWorkOrderChefImagesForStorage(item.workOrderImages || []);
-      base.workOrderResultImages = cloneWorkOrderChefImagesForStorage(item.workOrderResultImages || []);
+      base.workOrderResultImages = cloneWorkOrderResultImagesForStorage(item.workOrderResultImages || []);
     }
     targetList.push(base);
     if (isWorkOrderAssignment(item)) {
@@ -9908,13 +9941,17 @@ async function resolveCloudPhotoDisplayUrlsInSubmissions() {
     }
     if (entry.extraCosts && entry.extraCosts.photo) await fixPhoto(entry.extraCosts.photo);
   }
-  for (const row of workOrders) {
-    if (!row) continue;
-    if (Array.isArray(row.workOrderImages)) {
-      for (const ph of row.workOrderImages) await fixPhoto(ph);
-    }
-    if (Array.isArray(row.workOrderResultImages)) {
-      for (const ph of row.workOrderResultImages) await fixPhoto(ph);
+  for (const dateIso of Object.keys(staffSchedule)) {
+    const day = staffSchedule[dateIso];
+    if (!Array.isArray(day)) continue;
+    for (const entry of day) {
+      if (!entry || !isWorkOrderAssignment(entry)) continue;
+      if (Array.isArray(entry.workOrderImages)) {
+        for (const ph of entry.workOrderImages) await fixPhoto(ph);
+      }
+      if (Array.isArray(entry.workOrderResultImages)) {
+        for (const ph of entry.workOrderResultImages) await fixPhoto(ph);
+      }
     }
   }
 }
