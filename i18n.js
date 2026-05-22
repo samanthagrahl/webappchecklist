@@ -9,17 +9,10 @@
   var PAIRS = {
     "meta.title": ["Immobiliencheck", "Property Check"],
     "auth.title": ["Immobiliencheck Login", "Property check login"],
-    "auth.intro": [
-      "Melde dich als Chef, Kristina, Patrick, Souhail, Mohammed oder Reinigungspaar an.",
-      "Sign in as Chef, Kristina, Patrick, Souhail, Mohammed or Reinigungspaar."
-    ],
     "auth.username": ["Benutzername", "Username"],
     "auth.password": ["Passwort", "Password"],
-    "auth.placeholderUser": ["chef, kristina, patrick, souhail, mohammed, reinigungspaar", "chef, kristina, patrick, souhail, mohammed, reinigungspaar"],
-    "auth.placeholderPass": ["Passwort", "Password"],
     "auth.remember": ["Angemeldet bleiben", "Stay signed in"],
     "auth.submit": ["Anmelden", "Sign in"],
-    "auth.hint": ["Zugänge: chef/123, kristina/123, patrick/123, souhail/123, mohammed/123, reinigungspaar/123", "Demo: chef/123, kristina/123, patrick/123, souhail/123, mohammed/123, reinigungspaar/123"],
     "auth.error": ["Login fehlgeschlagen. Bitte Zugangsdaten prüfen.", "Login failed. Please check your credentials."],
     "lang.label": ["Sprache", "Language"],
     "lang.authAria": ["Sprache der Oberfläche", "Interface language"],

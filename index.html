@@ -8,7 +8,7 @@
     <link rel="icon" href="data:," />
     <script>
       (function () {
-        var targetVersion = "20260513-45";
+        var targetVersion = "20260519-auth-clean";
         var currentUrl = new URL(window.location.href);
         if (currentUrl.searchParams.get("pagev") !== targetVersion) {
           currentUrl.searchParams.set("pagev", targetVersion);
@@ -20,21 +20,20 @@
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
-      <form class="auth-card" id="loginForm">
+      <form class="auth-card" id="loginForm" autocomplete="off">
         <img class="auth-logo" src="logo-swiderski.png" alt="Swiderski Property Management" />
         <h1 data-i18n="auth.title">Immobiliencheck Login</h1>
-        <p data-i18n="auth.intro">Melde dich als Chef, Kristina, Patrick, Souhail, Mohammed oder Reinigungspaar an.</p>
         <label class="auth-lang">
           <span data-i18n="lang.label">Sprache</span>
           <select id="localeSelectAuth" aria-label="Sprache" data-i18n-aria="lang.authAria"></select>
         </label>
         <label>
           <span data-i18n="auth.username">Benutzername</span>
-          <input id="loginUsername" name="username" type="text" required data-i18n-placeholder="auth.placeholderUser" placeholder="chef, kristina, patrick, souhail, mohammed, reinigungspaar" />
+          <input id="loginUsername" name="username" type="text" required autocomplete="off" autocapitalize="none" spellcheck="false" />
         </label>
         <label>
           <span data-i18n="auth.password">Passwort</span>
-          <input id="loginPassword" name="password" type="password" required data-i18n-placeholder="auth.placeholderPass" placeholder="Passwort" />
+          <input id="loginPassword" name="password" type="password" required autocomplete="off" />
         </label>
         <label class="auth-remember">
           <input id="loginRemember" name="remember" type="checkbox" />
@@ -42,7 +41,6 @@
         </label>
         <small class="auth-error hidden" id="loginError" aria-live="polite"></small>
         <button class="primary-button" type="submit" data-i18n="auth.submit">Anmelden</button>
-        <small class="auth-hint" data-i18n="auth.hint">Zugänge: chef/123, kristina/123, patrick/123, souhail/123, mohammed/123, reinigungspaar/123</small>
       </form>
     </section>
 
@@ -395,8 +393,14 @@
           </div>
           <p class="muted hidden" id="staffAdminCloudHint" data-i18n="staff.cloudOnly">Mitarbeiterverwaltung ist nur mit Cloud-Anmeldung verfügbar.</p>
           <form class="staff-admin-form" id="staffAdminForm">
-            <input id="staffUsername" type="text" required autocomplete="off" autocapitalize="none" pattern="[a-z0-9_]{3,32}" maxlength="32" data-i18n-placeholder="staff.phUsername" placeholder="Benutzername" />
-            <small class="muted staff-username-hint" data-i18n="staff.usernameRules">3–32 Zeichen: a–z, 0–9, Unterstrich</small>
+            <div class="staff-username-wrap" id="staffUsernameWrap">
+              <label class="staff-username-label">
+                <span data-i18n="staff.usernameLabel">Benutzername</span>
+                <input id="staffUsername" type="text" required autocomplete="off" autocapitalize="none" spellcheck="false" pattern="[a-z0-9_]{3,32}" maxlength="32" data-i18n-placeholder="staff.phUsername" placeholder="Benutzername" />
+              </label>
+              <small class="muted staff-username-hint" id="staffUsernameHintRules" data-i18n="staff.usernameRules">3–32 Zeichen: a–z, 0–9, Unterstrich</small>
+              <small class="muted staff-username-hint hidden" id="staffUsernameHintLocked" data-i18n="staff.usernameLocked">Der Benutzername kann nach dem Anlegen nicht mehr geändert werden.</small>
+            </div>
             <input id="staffPassword" type="password" autocomplete="new-password" data-i18n-placeholder="staff.phPassword" placeholder="Passwort" />
             <input id="staffLabel" type="text" required maxlength="80" data-i18n-placeholder="staff.phLabel" placeholder="Anzeigename" />
             <label class="staff-role-label">

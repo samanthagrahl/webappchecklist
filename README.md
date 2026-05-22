@@ -9,10 +9,9 @@ Eine Webapp für Immobilienprüfungen und Handwerksbetriebe:
 - Ohne SMTP: E-Mail-Entwurf (`mailto:`) oder PDF-Download als Fallback.
 - Jeder Prüfpunkt kann einen eigenen Kurzkommentar enthalten.
 
-## Demo-Login (Cloud-Seed)
+## Benutzer
 
-- `chef` / `123` (Passwort in Produktion ändern)
-- Weitere Nutzer siehe Seed im Backend
+Zugänge werden im Backend bzw. unter **Mitarbeiter** (voller Chef) verwaltet. Die Anmeldemaske zeigt keine Demo-Zugänge.
 
 ## Lokal / Cloud starten
 
