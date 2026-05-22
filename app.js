@@ -1571,8 +1571,8 @@ function sanitizeWorkOrderResultImages(raw) {
 function mapWorkOrderResultPhotosForReport(raw) {
   return sanitizeWorkOrderResultImages(raw)
     .filter((ph) => photoHasDisplaySrc(ph))
-    .map((ph, idx) => ({
-      name: ph.name || t("wo.resultPhotoPdfLbl", { n: idx + 1 }),
+    .map((ph) => ({
+      name: "",
       data: ph.data || "",
       storageId: ph.storageId || ""
     }));
@@ -4874,7 +4874,7 @@ function buildReportHtml(entry) {
       <section class="contract-report-section">
         <h3>${escapeHtml(t("report.contract.imagesTitle"))}</h3>
         <div class="contract-report-photo-grid">
-          ${(entry.photos || []).map((photo, idx) => photoDisplayImgHtml(photo, photo.name || t("wo.resultPhotoPdfLbl", { n: idx + 1 }))).join("")}
+          ${(entry.photos || []).map((photo) => photoDisplayImgHtml(photo, t("img.altCp"))).join("")}
         </div>
       </section>` : ""}
     </div>
@@ -5192,7 +5192,10 @@ async function generateCustomerReportPdfBlob(entry) {
     .concat(
       (entry.photos || [])
         .filter((p) => p)
-        .map((p) => ({ photo: p, name: p.name || "" }))
+        .map((p) => ({
+          photo: p,
+          name: isWorkOrderReportEntry(entry) ? "" : (p.name || "")
+        }))
     );
   const allPhotos = [];
   for (const src of photoSources) {
@@ -5224,7 +5227,7 @@ async function generateCustomerReportPdfBlob(entry) {
         continue;
       }
       y += size.h + 4;
-      if (ph.name) {
+      if (ph.name && !isWorkOrderReportEntry(entry)) {
         drawParagraph(ph.name, margin, contentW, 8.5, false, muted);
       }
       y += 2;
