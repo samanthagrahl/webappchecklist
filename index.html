@@ -8,7 +8,7 @@
     <link rel="icon" href="data:," />
     <script>
       (function () {
-        var targetVersion = "20260519-auth-clean";
+        var targetVersion = "20260522-logo-hd";
         var currentUrl = new URL(window.location.href);
         if (currentUrl.searchParams.get("pagev") !== targetVersion) {
           currentUrl.searchParams.set("pagev", targetVersion);
@@ -21,7 +21,7 @@
   <body>
     <section class="auth-screen" id="authScreen">
       <form class="auth-card" id="loginForm" autocomplete="off">
-        <img class="auth-logo" src="logo-swiderski.png" alt="Swiderski Property Management" />
+        <img class="auth-logo" src="logo-swiderski.png?v=20260522-hd" alt="Swiderski Property Management" width="320" height="320" decoding="async" />
         <h1 data-i18n="auth.title">Immobiliencheck Login</h1>
         <label class="auth-lang">
           <span data-i18n="lang.label">Sprache</span>
@@ -47,7 +47,7 @@
     <div class="app-shell hidden" id="appShell">
       <aside class="sidebar">
         <div class="brand">
-          <img class="brand-logo" src="logo-swiderski.png" alt="Swiderski Property Management" />
+          <img class="brand-logo" src="logo-swiderski.png?v=20260522-hd" alt="Swiderski Property Management" width="96" height="96" decoding="async" />
           <div>
             <p data-i18n="sidebar.brandLine1">Immobiliencheck</p>
             <span data-i18n="sidebar.brandLine2">Prüfbericht von Immobilien</span>

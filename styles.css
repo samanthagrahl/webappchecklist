@@ -78,7 +78,10 @@ svg {
 }
 
 .auth-logo {
-  width: min(260px, 100%);
+  width: min(320px, 100%);
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
   justify-self: center;
   margin-bottom: 4px;
 }
@@ -147,8 +150,10 @@ svg {
 }
 
 .brand-logo {
-  width: 90px;
-  height: 90px;
+  width: 96px;
+  height: auto;
+  max-height: 96px;
+  flex-shrink: 0;
   object-fit: contain;
   border-radius: 10px;
   background: #ffffff;
