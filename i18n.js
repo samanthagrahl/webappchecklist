@@ -167,7 +167,7 @@
     "cust.phLast": ["Nachname", "Last name"],
     "cust.phAddr": ["Adresse", "Address"],
     "cust.phCoords": ["Koordinaten (lat, lng) optional", "Coordinates (lat, lng), optional"],
-    "cust.phProject": ["Projekt", "Project"],
+    "cust.phProject": ["Projekt (optional)", "Project (optional)"],
     "cust.phEmail": ["E-Mailadresse", "Email address"],
     "cust.phPhone": ["Telefonnummer", "Phone number"],
     "cust.photoLbl": ["Orientierungsbild (intern, 1 Bild)", "Orientation photo (internal, 1 image)"],

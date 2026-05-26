@@ -8872,7 +8872,10 @@ function renderCalendarCustomerOptions() {
   customerDb.forEach((entry) => {
     const option = document.createElement("option");
     option.value = entry.id;
-    option.textContent = `${entry.firstName} ${entry.lastName} - ${entry.project}`;
+    const projectSuffix = String(entry.project || "").trim();
+    option.textContent = projectSuffix
+      ? `${entry.firstName} ${entry.lastName} - ${projectSuffix}`
+      : `${entry.firstName} ${entry.lastName}`;
     el.calendarCustomerSelect.appendChild(option);
   });
   if (customerDb.some((entry) => entry.id === previousValue)) {
