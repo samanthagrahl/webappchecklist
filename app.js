@@ -7214,7 +7214,7 @@ function renderCustomerDb(preserveOpenCustomerId) {
   getCustomerDbEntriesForDisplay().forEach((entry) => {
     const customerActive = isCustomerActive(entry);
     const mapsUrl = buildCustomerMapsUrl(entry);
-    const customerFullName = `${entry.firstName} ${entry.lastName}`.trim();
+    const customerFullName = customerStammFullName(entry);
     const history = submissions
       .filter((submission) => (
         submission.customerId
@@ -7734,34 +7734,7 @@ function downloadCustomerImportTemplateXlsx() {
     return;
   }
   const sheetData = [
-    ["Vorname", "Nachname/Firma", "Adresse", "Koordinaten", "Projekt", "E-Mail", "Telefon"],
-    [
-      "Max",
-      "Mustermann",
-      "Musterstraße 1, 12345 Berlin",
-      "52.5200, 13.4050",
-      "Hausverwaltung Nord",
-      "max.mustermann@beispiel.de",
-      "+49 30 1234567"
-    ],
-    [
-      "",
-      "Muster GmbH",
-      "Gewerbestraße 5, 10115 Berlin",
-      "",
-      "Objekt Mitte",
-      "info@muster-gmbh.de",
-      ""
-    ],
-    [
-      "Maria",
-      "Schneider",
-      "Hauptstraße 10, 80331 München",
-      "",
-      "",
-      "maria.schneider@beispiel.de",
-      "089 987654"
-    ]
+    ["Vorname", "Nachname/Firma", "Adresse", "Koordinaten", "Projekt", "E-Mail", "Telefon"]
   ];
   const ws = XLSX.utils.aoa_to_sheet(sheetData);
   const wb = XLSX.utils.book_new();
@@ -8218,7 +8191,7 @@ function createChecklistFromAssignment(entry, templateIdExplicit) {
 function resolveCustomerIdByName(customerName) {
   const target = customerName.trim().toLowerCase();
   if (!target) return "";
-  const match = customerDb.find((customer) => `${customer.firstName} ${customer.lastName}`.trim().toLowerCase() === target);
+  const match = customerDb.find((customer) => customerStammFullName(customer).toLowerCase() === target);
   return match ? match.id || "" : "";
 }
 
