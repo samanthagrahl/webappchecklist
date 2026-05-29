@@ -7710,6 +7710,9 @@ function validateCustomerImportRecord(record, rowNumber) {
 }
 
 function showCustomerImportResult(added, skipped, errors) {
+  if (el.customerImportPanel && el.customerImportPanel.tagName === "DETAILS") {
+    el.customerImportPanel.open = true;
+  }
   if (!el.customerImportResult) return;
   const parts = [escapeHtml(t("cust.importResult", { added, skipped }))];
   if (errors.length) {

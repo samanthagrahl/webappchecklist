@@ -2514,16 +2514,11 @@ select.boss-status-select {
 }
 
 .customer-import-panel {
-  margin: 20px 0 8px;
-  padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
+  margin-top: 20px;
+  margin-bottom: 0;
 }
 
-.customer-import-panel h3 {
-  margin: 0 0 8px;
+.customer-import-summary .customer-db-subsection-head {
   font-size: 18px;
 }
 
