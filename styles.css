@@ -2513,6 +2513,53 @@ select.boss-status-select {
   gap: 10px;
 }
 
+.customer-import-panel {
+  margin: 20px 0 8px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.customer-import-panel h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.customer-import-intro {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.customer-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.customer-import-file-label {
+  cursor: pointer;
+  margin: 0;
+}
+
+.customer-import-result {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--text, #2a2a2e);
+}
+
+.customer-import-result.has-errors {
+  color: var(--danger, #c42e12);
+}
+
+.customer-import-result ul {
+  margin: 8px 0 0;
+  padding-left: 1.2rem;
+}
+
 .customer-db-media-pair {
   grid-column: 1 / -1;
   display: grid;

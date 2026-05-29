@@ -1335,6 +1335,9 @@ const el = {
   checkpointAccessHintRestricted: document.getElementById("checkpointAccessHintRestricted"),
   checkpointList: document.getElementById("checkpointList"),
   customerDbForm: document.getElementById("customerDbForm"),
+  customerImportTemplateBtn: document.getElementById("customerImportTemplateBtn"),
+  customerImportFile: document.getElementById("customerImportFile"),
+  customerImportResult: document.getElementById("customerImportResult"),
   customerDbList: document.getElementById("customerDbList"),
   dbFirstName: document.getElementById("dbFirstName"),
   dbLastName: document.getElementById("dbLastName"),
@@ -7544,8 +7547,299 @@ function syncCustomerDisplayNameAcrossApp(customerId, previousFullName, nextFull
   return touched;
 }
 
-function addCustomerEntry(firstName, lastName, address, coordinates, project, email, phone, orientationPhoto, contractPdf) {
-  const sets = collectCheckpointSetsForCustomerSave();
+const CUSTOMER_IMPORT_HEADER_KEYS = {
+  vorname: "firstName",
+  firstname: "firstName",
+  nachname: "lastName",
+  lastname: "lastName",
+  adresse: "address",
+  address: "address",
+  koordinaten: "coordinates",
+  coordinates: "coordinates",
+  coords: "coordinates",
+  projekt: "project",
+  project: "project",
+  email: "email",
+  mail: "email",
+  emailadresse: "email",
+  telefon: "phone",
+  phone: "phone",
+  telefonnummer: "phone",
+  tel: "phone"
+};
+
+const CUSTOMER_IMPORT_FIELD_LABELS = {
+  firstName: "Vorname",
+  lastName: "Nachname",
+  address: "Adresse",
+  email: "E-Mail",
+  phone: "Telefon"
+};
+
+function normalizeCustomerImportHeaderKey(raw) {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\u00e4/g, "ae")
+    .replace(/\u00f6/g, "oe")
+    .replace(/\u00fc/g, "ue")
+    .replace(/\u00df/g, "ss")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function buildBlankCheckpointSetsForCustomer() {
+  const result = {};
+  checklistTemplates.forEach((tpl) => {
+    result[tpl.id] = [];
+  });
+  return result;
+}
+
+function getXlsxConstructor() {
+  return typeof window !== "undefined" && window.XLSX ? window.XLSX : null;
+}
+
+function detectCsvDelimiter(line) {
+  const semi = (String(line).match(/;/g) || []).length;
+  const comma = (String(line).match(/,/g) || []).length;
+  return semi >= comma ? ";" : ",";
+}
+
+function parseCsvLine(line, delimiter) {
+  const out = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === "\"") {
+      if (inQuotes && line[i + 1] === "\"") {
+        cur += "\"";
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if (!inQuotes && ch === delimiter) {
+      out.push(cur);
+      cur = "";
+      continue;
+    }
+    cur += ch;
+  }
+  out.push(cur);
+  return out.map((cell) => String(cell || "").trim());
+}
+
+function parseCustomerImportCsvText(text) {
+  const raw = String(text || "").replace(/^\uFEFF/, "");
+  const lines = raw.split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean);
+  if (!lines.length) return [];
+  const delimiter = detectCsvDelimiter(lines[0]);
+  return lines.map((line) => parseCsvLine(line, delimiter));
+}
+
+function parseCustomerImportWorkbookArrayBuffer(buffer) {
+  const XLSX = getXlsxConstructor();
+  if (!XLSX) throw new Error("xlsx");
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheetName = workbook.SheetNames && workbook.SheetNames[0];
+  if (!sheetName) return [];
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+  return Array.isArray(rows) ? rows : [];
+}
+
+function mapCustomerImportTableToRows(table) {
+  if (!Array.isArray(table) || !table.length) return [];
+  const headerRowIndex = table.findIndex((row) => Array.isArray(row) && row.some((cell) => String(cell || "").trim()));
+  if (headerRowIndex < 0) return [];
+  const headerCells = table[headerRowIndex];
+  const columnMap = {};
+  headerCells.forEach((cell, colIndex) => {
+    const key = CUSTOMER_IMPORT_HEADER_KEYS[normalizeCustomerImportHeaderKey(cell)];
+    if (key) columnMap[colIndex] = key;
+  });
+  const requiredMapped = ["firstName", "lastName", "address", "email", "phone"].every((k) =>
+    Object.values(columnMap).includes(k)
+  );
+  if (!requiredMapped) return [];
+
+  const dataRows = [];
+  for (let r = headerRowIndex + 1; r < table.length; r += 1) {
+    const row = table[r];
+    if (!Array.isArray(row) || !row.some((cell) => String(cell || "").trim())) continue;
+    const record = {
+      firstName: "",
+      lastName: "",
+      address: "",
+      coordinates: "",
+      project: "",
+      email: "",
+      phone: ""
+    };
+    Object.keys(columnMap).forEach((colKey) => {
+      const col = Number(colKey);
+      const field = columnMap[col];
+      record[field] = String(row[col] != null ? row[col] : "").trim();
+    });
+    dataRows.push(record);
+  }
+  return dataRows;
+}
+
+function isCustomerImportEmailValid(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+}
+
+function validateCustomerImportRecord(record, rowNumber) {
+  const required = ["firstName", "lastName", "address", "email", "phone"];
+  for (let i = 0; i < required.length; i += 1) {
+    const field = required[i];
+    if (!String(record[field] || "").trim()) {
+      return t("cust.importRowError", {
+        row: rowNumber,
+        reason: t("cust.importMissing", { field: CUSTOMER_IMPORT_FIELD_LABELS[field] || field })
+      });
+    }
+  }
+  if (!isCustomerImportEmailValid(record.email)) {
+    return t("cust.importRowError", { row: rowNumber, reason: t("cust.importBadEmail") });
+  }
+  return "";
+}
+
+function showCustomerImportResult(added, skipped, errors) {
+  if (!el.customerImportResult) return;
+  const parts = [escapeHtml(t("cust.importResult", { added, skipped }))];
+  if (errors.length) {
+    parts.push(`<ul>${errors.slice(0, 12).map((msg) => `<li>${escapeHtml(msg)}</li>`).join("")}</ul>`);
+    if (errors.length > 12) {
+      parts.push(`<p class="muted">… +${errors.length - 12}</p>`);
+    }
+  }
+  el.customerImportResult.innerHTML = parts.join("");
+  el.customerImportResult.classList.toggle("hidden", false);
+  el.customerImportResult.classList.toggle("has-errors", errors.length > 0);
+}
+
+function downloadCustomerImportTemplateXlsx() {
+  const XLSX = getXlsxConstructor();
+  if (!XLSX) {
+    showToast(t("cust.importNoLibrary"));
+    return;
+  }
+  const sheetData = [
+    ["Vorname", "Nachname", "Adresse", "Koordinaten", "Projekt", "E-Mail", "Telefon"],
+    [
+      "Max",
+      "Mustermann",
+      "Musterstraße 1, 12345 Berlin",
+      "52.5200, 13.4050",
+      "Hausverwaltung Nord",
+      "max.mustermann@beispiel.de",
+      "+49 30 1234567"
+    ],
+    [
+      "Maria",
+      "Schneider",
+      "Hauptstraße 10, 80331 München",
+      "",
+      "",
+      "maria.schneider@beispiel.de",
+      "089 987654"
+    ]
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Kunden");
+  XLSX.writeFile(wb, "Kundenimport-Vorlage.xlsx");
+}
+
+async function parseCustomerImportFile(file) {
+  const name = String(file && file.name || "").toLowerCase();
+  const isCsv = name.endsWith(".csv") || (file.type && file.type.includes("csv"));
+  if (isCsv) {
+    const text = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+      reader.onerror = () => reject(reader.error || new Error("read"));
+      reader.readAsText(file, "UTF-8");
+    });
+    return parseCustomerImportCsvText(text);
+  }
+  const buffer = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error || new Error("read"));
+    reader.readAsArrayBuffer(file);
+  });
+  return parseCustomerImportWorkbookArrayBuffer(buffer);
+}
+
+async function runCustomerImportFromFile(file) {
+  if (!hasFullChefCapabilities()) return;
+  let table;
+  try {
+    table = await parseCustomerImportFile(file);
+  } catch (err) {
+    console.error(err);
+    showToast(err && err.message === "xlsx" ? t("cust.importNoLibrary") : t("toast.importFileError"));
+    return;
+  }
+  const records = mapCustomerImportTableToRows(table);
+  if (!records.length) {
+    showToast(t("cust.importEmpty"));
+    if (el.customerImportResult) {
+      el.customerImportResult.textContent = t("cust.importEmpty");
+      el.customerImportResult.classList.remove("hidden", "has-errors");
+    }
+    return;
+  }
+
+  const blankSets = buildBlankCheckpointSetsForCustomer();
+  let added = 0;
+  let skipped = 0;
+  const errors = [];
+  const headerRowOffset = 2;
+
+  records.forEach((record, index) => {
+    const rowNumber = index + headerRowOffset;
+    const err = validateCustomerImportRecord(record, rowNumber);
+    if (err) {
+      skipped += 1;
+      errors.push(err);
+      return;
+    }
+    const address = normalizeLocationInput(record.address);
+    const coordinates = normalizeCoordinatesInput(record.coordinates);
+    addCustomerEntry(
+      record.firstName.trim(),
+      record.lastName.trim(),
+      address,
+      coordinates,
+      String(record.project || "").trim(),
+      record.email.trim(),
+      record.phone.trim(),
+      null,
+      null,
+      { checkpointSets: blankSets, skipPersist: true }
+    );
+    added += 1;
+  });
+
+  if (added > 0) {
+    persistCustomerDb();
+    renderCustomerDb();
+    renderCalendarCustomerOptions();
+  }
+  showCustomerImportResult(added, skipped, errors);
+  showToast(t("toast.custImportDone"));
+}
+
+function addCustomerEntry(firstName, lastName, address, coordinates, project, email, phone, orientationPhoto, contractPdf, opts) {
+  const options = opts && typeof opts === "object" ? opts : {};
+  const sets = options.checkpointSets || collectCheckpointSetsForCustomerSave();
   const record = {
     id: createId(),
     firstName,
@@ -7563,9 +7857,11 @@ function addCustomerEntry(firstName, lastName, address, coordinates, project, em
   };
   migrateCustomerCheckpointSetsIfNeeded(record);
   customerDb.unshift(record);
-  persistCustomerDb();
-  renderCustomerDb();
-  renderCalendarCustomerOptions();
+  if (!options.skipPersist) {
+    persistCustomerDb();
+    renderCustomerDb();
+    renderCalendarCustomerOptions();
+  }
 }
 
 function updateCustomerEntry(id, firstName, lastName, address, coordinates, project, email, phone, orientationPhoto, contractPdf) {
@@ -9724,6 +10020,21 @@ if (el.guideDbForm) {
     resetGuideDbForm();
   });
 }
+if (el.customerImportTemplateBtn) {
+  el.customerImportTemplateBtn.addEventListener("click", () => {
+    if (!hasFullChefCapabilities()) return;
+    downloadCustomerImportTemplateXlsx();
+  });
+}
+if (el.customerImportFile) {
+  el.customerImportFile.addEventListener("change", () => {
+    const file = el.customerImportFile.files && el.customerImportFile.files[0];
+    el.customerImportFile.value = "";
+    if (!file) return;
+    void runCustomerImportFromFile(file);
+  });
+}
+
 el.customerDbForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const normalizedAddress = normalizeLocationInput(el.dbAddress.value);

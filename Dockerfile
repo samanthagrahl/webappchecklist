@@ -9,6 +9,7 @@ COPY backend ./backend
 COPY index.html app.js i18n.js styles.css js ./ 
 COPY vendor ./vendor
 COPY logo-swiderski.png ./
+COPY templates ./templates
 
 WORKDIR /app/backend
 
