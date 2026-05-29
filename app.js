@@ -385,7 +385,7 @@ function resolveSubmissionCustomerId(submission) {
   if (cid) return cid;
   const name = submission && submission.customerName ? String(submission.customerName).trim().toLowerCase() : "";
   if (!name) return "";
-  const hit = customerDb.find((c) => `${c.firstName} ${c.lastName}`.trim().toLowerCase() === name);
+  const hit = customerDb.find((c) => customerStammFullName(c).toLowerCase() === name);
   return hit ? hit.id : "";
 }
 
@@ -7391,7 +7391,7 @@ function renderCustomerDb(preserveOpenCustomerId) {
     row.innerHTML = `
       <summary class="customer-db-summary">
         <div class="customer-db-summary-main">
-          <p><strong>${escapeHtml(entry.firstName)} ${escapeHtml(entry.lastName)}</strong>${customerActive ? "" : ` <span class="customer-status-badge">${escapeHtml(t("cust.statusInactive"))}</span>`}</p>
+          <p><strong>${escapeHtml(customerStammFullName(entry) || "\u2014")}</strong>${customerActive ? "" : ` <span class="customer-status-badge">${escapeHtml(t("cust.statusInactive"))}</span>`}</p>
           <small>${escapeHtml(entry.address || "-")}</small>
           <small>${escapeHtml(entry.email || "-")} · ${escapeHtml(entry.phone || "-")}</small>
         </div>
@@ -7479,10 +7479,10 @@ function renderCustomerDb(preserveOpenCustomerId) {
   });
 }
 
-/** Vollständiger Anzeigename aus dem Stammsatz („Vorname Nachname“). */
+/** Vollständiger Anzeigename aus dem Stammsatz (Vorname + Nachname/Firma). */
 function customerStammFullName(parts) {
   const o = parts && typeof parts === "object" ? parts : {};
-  return `${String(o.firstName || "").trim()} ${String(o.lastName || "").trim()}`.trim();
+  return [String(o.firstName || "").trim(), String(o.lastName || "").trim()].filter(Boolean).join(" ");
 }
 
 /**
@@ -7552,6 +7552,9 @@ const CUSTOMER_IMPORT_HEADER_KEYS = {
   firstname: "firstName",
   nachname: "lastName",
   lastname: "lastName",
+  firma: "lastName",
+  nachnamefirma: "lastName",
+  namefirma: "lastName",
   adresse: "address",
   address: "address",
   koordinaten: "coordinates",
@@ -7569,11 +7572,9 @@ const CUSTOMER_IMPORT_HEADER_KEYS = {
 };
 
 const CUSTOMER_IMPORT_FIELD_LABELS = {
-  firstName: "Vorname",
-  lastName: "Nachname",
+  lastName: "Nachname/Firma",
   address: "Adresse",
-  email: "E-Mail",
-  phone: "Telefon"
+  email: "E-Mail"
 };
 
 function normalizeCustomerImportHeaderKey(raw) {
@@ -7660,7 +7661,7 @@ function mapCustomerImportTableToRows(table) {
     const key = CUSTOMER_IMPORT_HEADER_KEYS[normalizeCustomerImportHeaderKey(cell)];
     if (key) columnMap[colIndex] = key;
   });
-  const requiredMapped = ["firstName", "lastName", "address", "email", "phone"].every((k) =>
+  const requiredMapped = ["lastName", "address", "email"].every((k) =>
     Object.values(columnMap).includes(k)
   );
   if (!requiredMapped) return [];
@@ -7693,7 +7694,7 @@ function isCustomerImportEmailValid(email) {
 }
 
 function validateCustomerImportRecord(record, rowNumber) {
-  const required = ["firstName", "lastName", "address", "email", "phone"];
+  const required = ["lastName", "address", "email"];
   for (let i = 0; i < required.length; i += 1) {
     const field = required[i];
     if (!String(record[field] || "").trim()) {
@@ -7733,7 +7734,7 @@ function downloadCustomerImportTemplateXlsx() {
     return;
   }
   const sheetData = [
-    ["Vorname", "Nachname", "Adresse", "Koordinaten", "Projekt", "E-Mail", "Telefon"],
+    ["Vorname", "Nachname/Firma", "Adresse", "Koordinaten", "Projekt", "E-Mail", "Telefon"],
     [
       "Max",
       "Mustermann",
@@ -7742,6 +7743,15 @@ function downloadCustomerImportTemplateXlsx() {
       "Hausverwaltung Nord",
       "max.mustermann@beispiel.de",
       "+49 30 1234567"
+    ],
+    [
+      "",
+      "Muster GmbH",
+      "Gewerbestraße 5, 10115 Berlin",
+      "",
+      "Objekt Mitte",
+      "info@muster-gmbh.de",
+      ""
     ],
     [
       "Maria",
@@ -8506,7 +8516,7 @@ function addStaffEntriesMulti(
       fromTime,
       toTime,
       customerId: customer.id,
-      customerName: `${customer.firstName} ${customer.lastName}`,
+      customerName: customerStammFullName(customer),
       customerAddress: customer.address,
       customerCoordinates: customer.coordinates || "",
       project: customer.project,
@@ -8569,7 +8579,7 @@ function addStaffEntry(employeeUsername, fromTime, toTime, customerId, staffComm
     fromTime,
     toTime,
     customerId: customer.id,
-    customerName: `${customer.firstName} ${customer.lastName}`,
+    customerName: customerStammFullName(customer),
     customerAddress: customer.address,
     customerCoordinates: customer.coordinates || "",
     project: customer.project,
@@ -8636,7 +8646,7 @@ function addWorkOrderEntriesMulti(
       fromTime,
       toTime,
       customerId: customer.id,
-      customerName: `${customer.firstName} ${customer.lastName}`,
+      customerName: customerStammFullName(customer),
       customerAddress: customer.address,
       customerCoordinates: customer.coordinates || "",
       project: customer.project,
@@ -8689,7 +8699,7 @@ function updateSingleWorkOrderStaffEntry(entryId, employeeUsername, fromTime, to
     fromTime,
     toTime,
     customerId: customer.id,
-    customerName: `${customer.firstName} ${customer.lastName}`,
+    customerName: customerStammFullName(customer),
     customerAddress: customer.address,
     customerCoordinates: customer.coordinates || "",
     project: customer.project,
@@ -8752,7 +8762,7 @@ function updateSingleStaffEntry(entryId, employeeUsername, fromTime, toTime, cus
     fromTime,
     toTime,
     customerId: customer.id,
-    customerName: `${customer.firstName} ${customer.lastName}`,
+    customerName: customerStammFullName(customer),
     customerAddress: customer.address,
     customerCoordinates: customer.coordinates || "",
     project: customer.project,
@@ -8843,7 +8853,7 @@ function buildRecurringRulePayload(employee, customer, recurrenceKind, weekdayNu
     name: employee.label,
     weekday: weekdayNumber,
     customerId: customer.id,
-    customerName: `${customer.firstName} ${customer.lastName}`,
+    customerName: customerStammFullName(customer),
     customerAddress: customer.address,
     customerCoordinates: customer.coordinates || "",
     project: customer.project,
@@ -9172,9 +9182,8 @@ function renderCalendarCustomerOptions() {
     const option = document.createElement("option");
     option.value = entry.id;
     const projectSuffix = String(entry.project || "").trim();
-    option.textContent = projectSuffix
-      ? `${entry.firstName} ${entry.lastName} - ${projectSuffix}`
-      : `${entry.firstName} ${entry.lastName}`;
+    const label = customerStammFullName(entry) || "\u2014";
+    option.textContent = projectSuffix ? `${label} - ${projectSuffix}` : label;
     el.calendarCustomerSelect.appendChild(option);
   });
   if (customerDb.some((entry) => entry.id === previousValue)) {

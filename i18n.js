@@ -163,13 +163,13 @@
     "review.emptyTitle": ["Checkliste auswählen", "Select a checklist"],
     "review.emptySub": ["Der Bericht, die Bilder und die Freigabe erscheinen hier.", "Report, photos and approval appear here."],
     "cust.heading": ["Kundendatenbank", "Customer database"],
-    "cust.phFirst": ["Vorname", "First name"],
-    "cust.phLast": ["Nachname", "Last name"],
+    "cust.phFirst": ["Vorname (optional)", "First name (optional)"],
+    "cust.phLast": ["Nachname/Firma", "Last name / Company"],
     "cust.phAddr": ["Adresse", "Address"],
     "cust.phCoords": ["Koordinaten (lat, lng) optional", "Coordinates (lat, lng), optional"],
     "cust.phProject": ["Projekt (optional)", "Project (optional)"],
     "cust.phEmail": ["E-Mailadresse", "Email address"],
-    "cust.phPhone": ["Telefonnummer", "Phone number"],
+    "cust.phPhone": ["Telefonnummer (optional)", "Phone number (optional)"],
     "cust.photoLbl": ["Orientierungsbild (intern, 1 Bild)", "Orientation photo (internal, 1 image)"],
     "cust.photoRemove": ["Bild entfernen", "Remove image"],
     "cust.contractLbl": ["Kundenvertrag (PDF)", "Customer contract (PDF)"],
@@ -182,8 +182,8 @@
     "cust.save": ["Kunde speichern", "Save customer"],
     "cust.importHeading": ["Kunden importieren", "Import customers"],
     "cust.importIntro": [
-      "Excel (.xlsx) oder CSV mit den Spalten aus der Vorlage. Erste Zeile = Überschriften. Koordinaten und Projekt sind optional.",
-      "Excel (.xlsx) or CSV using the template columns. First row = headers. Coordinates and project are optional."
+      "Excel (.xlsx) oder CSV mit den Spalten aus der Vorlage. Erste Zeile = Überschriften. Pflicht: Nachname/Firma, Adresse, E-Mail. Vorname, Koordinaten, Projekt und Telefon optional.",
+      "Excel (.xlsx) or CSV using the template columns. First row = headers. Required: last name/company, address, email. First name, coordinates, project and phone optional."
     ],
     "cust.importTemplateCsv": ["CSV-Vorlage herunterladen", "Download CSV template"],
     "cust.importTemplateXlsx": ["Excel-Vorlage (.xlsx)", "Excel template (.xlsx)"],
