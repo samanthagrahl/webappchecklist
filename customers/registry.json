@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "model": "one-instance-per-customer",
+  "description": "Jeder Eintrag = eigene App-Instanz mit eigener DB, eigenem S3-Bucket und eigener Domain.",
+  "customers": [
+    {
+      "slug": "kunde-a",
+      "displayName": "Kunde A",
+      "status": "pending",
+      "fqdn": "kunde-a.deine-domain.de",
+      "appPort": 3847,
+      "databaseName": "immobiliencheck_kunde_a",
+      "s3Bucket": "immobiliencheck-kunde-a",
+      "systemdService": "immobiliencheck-kunde-a",
+      "createdAt": "2026-06-05"
+    }
+  ]
+}

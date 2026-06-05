@@ -1,0 +1,24 @@
+{
+  "slug": "kunde-a",
+  "displayName": "Kunde A",
+  "status": "pending",
+  "createdAt": "2026-06-05",
+  "domain": {
+    "subdomain": "kunde-a",
+    "fqdn": "kunde-a.deine-domain.de",
+    "publicUrl": "https://kunde-a.deine-domain.de"
+  },
+  "infrastructure": {
+    "appPort": 3847,
+    "databaseName": "immobiliencheck_kunde_a",
+    "s3Bucket": "immobiliencheck-kunde-a",
+    "systemdService": "immobiliencheck-kunde-a",
+    "installPath": "/opt/immobiliencheck"
+  },
+  "onboarding": {
+    "adminUsername": "chef",
+    "adminLabel": "Chef (Kunde A)",
+    "initialPasswordSet": false,
+    "notes": "Nach Deploy: upsert-boss-user mit ADMIN_USERNAME=chef und sicherem Passwort"
+  }
+}

@@ -36,11 +36,32 @@ npm start
 
 Alle Einstellungen liegen in **`.env`** (Vorlage: **`.env.example`**).
 
-## Produktion (Hetzner)
+## Produktion (eigener Hetzner-Server)
 
-Siehe [`DEPLOY-HETZNER.md`](DEPLOY-HETZNER.md) — CX33, PostgreSQL, Object Storage, Domain, TLS.
+**Multi-Instanz (empfohlen):** Jeder Kunde erhält eine eigene Instanz (eigene DB, eigener S3-Bucket, eigene Subdomain).
 
-Nach Code-Änderungen in Cursor: [`DEPLOY-UPDATE.md`](DEPLOY-UPDATE.md).
+| Dokument | Inhalt |
+|----------|--------|
+| [`INFRASTRUKTUR.md`](INFRASTRUKTUR.md) | Plattform-Setup (Hetzner, S3, DNS) |
+| [`ONBOARDING-KUNDE.md`](ONBOARDING-KUNDE.md) | Kunden anlegen und live bringen |
+| [`DEPLOY-HETZNER.md`](DEPLOY-HETZNER.md) | Basis-Server-Installation |
+| [`DEPLOY-UPDATE.md`](DEPLOY-UPDATE.md) | Code-Updates auf dem Server |
+
+Erster Kunde vorbereitet: **`customers/kunde-a/`**
+
+```bash
+# Plattform-Konfiguration
+cp infrastructure/platform.config.example.json infrastructure/platform.config.json
+
+# Instanz prüfen
+npm run customer:validate -- --slug kunde-a
+
+# Onboarding-Checkliste
+npm run customer:checklist -- kunde-a
+
+# Weiteren Kunden anlegen
+npm run customer:create -- --slug kunde-b --name "Kunde B"
+```
 
 Wichtig für automatischen Kundenbericht:
 

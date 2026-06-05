@@ -1,7 +1,30 @@
 "use strict";
 
+const fs = require("fs");
 const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, "..", "..", ".env") });
+
+function resolveEnvFilePath() {
+  const siteRoot = path.resolve(__dirname, "..", "..");
+  const explicit = String(process.env.INSTANCE_ENV_FILE || process.env.ENV_FILE || "").trim();
+  if (explicit) {
+    return path.isAbsolute(explicit) ? explicit : path.join(siteRoot, explicit);
+  }
+  const slug = String(process.env.CUSTOMER_SLUG || "").trim();
+  if (slug) {
+    return path.join(siteRoot, "customers", slug, "instance.env");
+  }
+  return path.join(siteRoot, ".env");
+}
+
+const envFilePath = resolveEnvFilePath();
+if (!fs.existsSync(envFilePath)) {
+  const slug = String(process.env.CUSTOMER_SLUG || "").trim();
+  const explicit = String(process.env.INSTANCE_ENV_FILE || process.env.ENV_FILE || "").trim();
+  if (slug || explicit) {
+    throw new Error(`Env-Datei nicht gefunden: ${envFilePath}`);
+  }
+}
+require("dotenv").config({ path: envFilePath });
 
 function parseBool(raw, defaultVal) {
   if (raw === undefined || raw === null || String(raw).trim() === "") return defaultVal;

@@ -1,0 +1,17 @@
+# /etc/systemd/system/immobiliencheck-{{SLUG}}.service
+# systemctl daemon-reload && systemctl enable --now immobiliencheck-{{SLUG}}
+
+[Unit]
+Description=Immobiliencheck — {{DISPLAY_NAME}}
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/immobiliencheck/backend
+EnvironmentFile=/opt/immobiliencheck/customers/{{SLUG}}/instance.env
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

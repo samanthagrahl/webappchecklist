@@ -1,5 +1,8 @@
 .DS_Store
 Thumbs.db
 .env
+infrastructure/platform.config.json
+customers/*/instance.env
+customers/*/data/
 mail-service.config.json
 node_modules/

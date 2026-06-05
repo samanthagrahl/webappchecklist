@@ -1,0 +1,14 @@
+[Unit]
+Description=Immobiliencheck — Kunde A
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/immobiliencheck/backend
+EnvironmentFile=/opt/immobiliencheck/customers/kunde-a/instance.env
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

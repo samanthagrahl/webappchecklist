@@ -1,5 +1,7 @@
 # Deployment auf Hetzner (CX33 + Object Storage + Domain)
 
+> **Eigener Server mit mehreren Kunden?** Siehe [`INFRASTRUKTUR.md`](INFRASTRUKTUR.md) und [`ONBOARDING-KUNDE.md`](ONBOARDING-KUNDE.md) — dort ist der erste Kunde **Kunde A** unter `customers/kunde-a/` vorbereitet.
+
 Diese Anleitung beschreibt den Betrieb der **Cloud-Version** mit:
 
 - **CX33** (API + Webapp)
@@ -63,7 +65,7 @@ apt install -y nodejs git nginx certbot python3-certbot-nginx
 Projekt nach `/opt/immobiliencheck` klonen:
 
 ```bash
-git clone https://github.com/PatrickSPM/immobiliencheck.git /opt/immobiliencheck
+git clone https://github.com/samanthagrahl/webappchecklist.git /opt/immobiliencheck
 cd /opt/immobiliencheck
 cp .env.example .env
 nano .env

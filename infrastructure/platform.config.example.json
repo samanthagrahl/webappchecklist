@@ -1,0 +1,56 @@
+{
+  "$schema": "./platform.config.schema.json",
+  "_comment": "Kopiere nach platform.config.json und trage deine Hetzner-/S3-/DNS-Daten ein. Nicht committen.",
+
+  "operator": {
+    "name": "Dein Unternehmen",
+    "contactEmail": "admin@deine-domain.de"
+  },
+
+  "hetzner": {
+    "serverName": "immobiliencheck-platform",
+    "serverIp": "",
+    "sshUser": "root",
+    "sshKeyPath": "~/.ssh/id_ed25519_hetzner",
+    "installPath": "/opt/immobiliencheck",
+    "nodeVersion": "20"
+  },
+
+  "objectStorage": {
+    "endpoint": "https://fsn1.your-objectstorage.com",
+    "region": "fsn1",
+    "accessKeyId": "",
+    "secretAccessKey": "",
+    "forcePathStyle": true
+  },
+
+  "dns": {
+    "baseDomain": "deine-domain.de",
+    "provider": "Hetzner DNS / IONOS / Cloudflare"
+  },
+
+  "smtp": {
+    "host": "smtp.deine-domain.de",
+    "port": 587,
+    "secure": false,
+    "requireTls": true,
+    "user": "",
+    "pass": "",
+    "from": "Immobiliencheck <berichte@deine-domain.de>"
+  },
+
+  "database": {
+    "mode": "managed",
+    "host": "",
+    "port": 5432,
+    "adminUser": "",
+    "adminPassword": "",
+    "sslMode": "require"
+  },
+
+  "instanceDefaults": {
+    "portStart": 3847,
+    "portStep": 1,
+    "jwtSecretHint": "openssl rand -base64 48"
+  }
+}

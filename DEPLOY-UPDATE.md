@@ -5,7 +5,7 @@ Anleitung, wenn am PC in Cursor etwas geändert wurde und es auf **https://app-s
 ## Ablauf
 
 ```
-Cursor (PC)  →  git commit + push  →  GitHub (PatrickSPM/immobiliencheck)
+Cursor (PC)  →  git commit + push  →  GitHub (samanthagrahl/webappchecklist)
                                             ↓
 Hetzner       →  git pull  →  ggf. npm install / migrate  →  Dienst neu starten
 ```
@@ -35,7 +35,7 @@ git commit -m "Kurz beschreiben was geändert wurde"
 git push origin main
 ```
 
-Repository: `https://github.com/PatrickSPM/immobiliencheck`
+Repository: `https://github.com/samanthagrahl/webappchecklist`
 
 ---
 

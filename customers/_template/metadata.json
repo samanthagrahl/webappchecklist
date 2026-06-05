@@ -1,0 +1,24 @@
+{
+  "slug": "{{SLUG}}",
+  "displayName": "{{DISPLAY_NAME}}",
+  "status": "pending",
+  "createdAt": "{{CREATED_AT}}",
+  "domain": {
+    "subdomain": "{{SLUG}}",
+    "fqdn": "{{FQDN}}",
+    "publicUrl": "https://{{FQDN}}"
+  },
+  "infrastructure": {
+    "appPort": {{APP_PORT}},
+    "databaseName": "immobiliencheck_{{SLUG_UNDERSCORE}}",
+    "s3Bucket": "immobiliencheck-{{SLUG}}",
+    "systemdService": "immobiliencheck-{{SLUG}}",
+    "installPath": "/opt/immobiliencheck"
+  },
+  "onboarding": {
+    "adminUsername": "chef",
+    "adminLabel": "Chef ({{DISPLAY_NAME}})",
+    "initialPasswordSet": false,
+    "notes": "Nach Deploy: npm run upsert-boss-user mit ADMIN_USERNAME und ADMIN_PASSWORD"
+  }
+}

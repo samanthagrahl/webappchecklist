@@ -3,11 +3,8 @@
 /**
  * Einmalig auf dem Server (Passwort nicht committen):
  *   cd /opt/immobiliencheck/backend
- *   ADMIN_USERNAME=patrick_admin ADMIN_PASSWORD='Patrick123!' npm run upsert-boss-user
+ *   CUSTOMER_SLUG=kunde-a ADMIN_USERNAME=chef ADMIN_PASSWORD='...' npm run upsert-boss-user
  */
-
-const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, "..", "..", ".env") });
 
 const bcrypt = require("bcryptjs");
 const { getPool } = require("../src/db/pool");

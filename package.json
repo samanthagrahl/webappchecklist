@@ -1,10 +1,13 @@
-{
-  "private": true,
-  "scripts": {
-    "start": "node backend/src/index.js",
-    "migrate": "node backend/src/db/migrate.js",
-    "seed": "node backend/src/db/seed.js",
-    "docker:up": "docker compose up -d --build",
-    "import:local": "node scripts/import-localstorage-export.js"
-  }
-}
+{
+  "private": true,
+  "scripts": {
+    "start": "node backend/src/index.js",
+    "migrate": "node backend/src/db/migrate.js",
+    "seed": "node backend/src/db/seed.js",
+    "docker:up": "docker compose up -d --build",
+    "import:local": "node scripts/import-localstorage-export.js",
+    "customer:create": "node scripts/create-customer.js",
+    "customer:validate": "node scripts/validate-instance-env.js",
+    "customer:checklist": "node scripts/print-onboarding-checklist.js"
+  }
+}
