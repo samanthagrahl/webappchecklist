@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
   /* Markenpalette */
-  --bg: #f5f7fa;
+  --bg: #f8fafc;
   --sidebar-bg: #1f2933;
   --sidebar-active: #334e68;
   --panel: #ffffff;
@@ -737,7 +737,7 @@ h2 {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fafbff;
+  background: var(--bg);
 }
 
 .chef-daily-corrections-heading {
@@ -1512,7 +1512,7 @@ select.boss-status-select {
   padding: 16px;
   border: 1px solid rgba(51, 78, 104, 0.28);
   border-radius: 8px;
-  background: #fffef9;
+  background: var(--bg);
 }
 
 .report-preview--collapsible {
@@ -1914,7 +1914,7 @@ select.boss-status-select {
   gap: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fffef9;
+  background: var(--bg);
   padding: 14px;
 }
 
@@ -2041,7 +2041,7 @@ select.boss-status-select {
   padding: 6px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fffef9;
+  background: var(--bg);
   min-height: 38px;
   box-sizing: border-box;
 }
@@ -2197,7 +2197,7 @@ select.boss-status-select {
 .worktime-item {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fffef9;
+  background: var(--bg);
   padding: 12px;
   display: grid;
   gap: 4px;
@@ -2369,7 +2369,7 @@ select.boss-status-select {
   padding: 14px;
   border: 1px solid #e8dfd2;
   border-radius: 12px;
-  background: #fffdf9;
+  background: var(--bg);
 }
 
 .staff-username-wrap {
@@ -2461,7 +2461,7 @@ select.boss-status-select {
 
 .staff-admin-item.inactive {
   opacity: 0.72;
-  background: #faf8f5;
+  background: var(--bg);
 }
 
 .staff-admin-item-head {
@@ -2507,7 +2507,7 @@ select.boss-status-select {
   padding: 14px;
   border: 1px solid #e8dfd2;
   border-radius: 12px;
-  background: #fffdf9;
+  background: var(--bg);
 }
 
 .guide-pdf-uploads {
@@ -2712,7 +2712,7 @@ select.boss-status-select {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
-  background: #fffef9;
+  background: var(--bg);
 }
 
 .customer-checkpoints summary {
@@ -2785,7 +2785,7 @@ select.boss-status-select {
   padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fffef9;
+  background: var(--bg);
   cursor: pointer;
   min-height: 0;
 }
@@ -2814,7 +2814,7 @@ select.boss-status-select {
   padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fffef9;
+  background: var(--bg);
   cursor: pointer;
   min-height: 0;
 }
@@ -2874,7 +2874,7 @@ select.boss-status-select {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 10px;
-  background: #fffef9;
+  background: var(--bg);
 }
 
 .customer-db-summary {
@@ -3144,7 +3144,7 @@ select.boss-status-select {
   flex-direction: column;
   gap: 10px;
   padding: 11px 13px;
-  background: linear-gradient(to bottom right, #fffdf9 0%, #faf6ef 100%);
+  background: var(--bg);
   border: 1px solid rgba(201, 177, 123, 0.45);
   border-radius: 10px;
   box-shadow: 0 4px 16px rgba(58, 40, 8, 0.06);
@@ -3326,7 +3326,7 @@ select.boss-status-select {
   font-size: 13px;
   line-height: 1.45;
   color: var(--ink);
-  background: linear-gradient(to bottom, #fffef9, #faf6ef);
+  background: var(--bg);
   border: 1px solid rgba(201, 177, 123, 0.45);
   border-left-width: 4px;
   border-radius: 8px;
@@ -3344,7 +3344,7 @@ select.boss-status-select {
   padding: 0;
   max-width: min(420px, calc(100vw - 32px));
   box-shadow: 0 20px 50px rgba(58, 40, 8, 0.22);
-  background: #fffdf8;
+  background: var(--bg);
 }
 
 .calendar-copy-dialog::backdrop {
@@ -3404,7 +3404,7 @@ select.boss-status-select {
   border-left: 6px solid #c9b17b;
   border-radius: 8px;
   padding: 10px;
-  background: #fffef9;
+  background: var(--bg);
 }
 
 .staff-item div {
