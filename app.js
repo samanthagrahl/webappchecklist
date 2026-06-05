@@ -10254,9 +10254,9 @@ async function resolveCloudPhotoDisplayUrlsInSubmissions() {
 function renderLoginDemoHint() {
   if (!el.loginDemoHint || !el.loginDemoList) return;
   const cloud = cloudStore();
-  if (cloud && cloud.enabled) {
+  const hideDemo = Boolean(cloud && cloud.enabled);
+  if (hideDemo) {
     el.loginDemoHint.classList.add("hidden");
-    el.loginDemoList.innerHTML = "";
     return;
   }
   el.loginDemoList.innerHTML = DEFAULT_USERS.map((user) => {

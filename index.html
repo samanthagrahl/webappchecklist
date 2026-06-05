@@ -8,7 +8,7 @@
     <link rel="icon" href="data:," />
     <script>
       (function () {
-        var targetVersion = "20260522-logo-hd";
+        var targetVersion = "20260605-demo-hint";
         var currentUrl = new URL(window.location.href);
         if (currentUrl.searchParams.get("pagev") !== targetVersion) {
           currentUrl.searchParams.set("pagev", targetVersion);
@@ -41,9 +41,11 @@
         </label>
         <small class="auth-error hidden" id="loginError" aria-live="polite"></small>
         <button class="primary-button" type="submit" data-i18n="auth.submit">Anmelden</button>
-        <div class="auth-demo-hint hidden" id="loginDemoHint">
+        <div class="auth-demo-hint" id="loginDemoHint">
           <p class="auth-demo-title" data-i18n="auth.demoTitle">Demo-Zugänge</p>
-          <ul class="auth-demo-list" id="loginDemoList"></ul>
+          <ul class="auth-demo-list" id="loginDemoList">
+            <li>chef / 123 (<span data-i18n="auth.demoRoleBoss">Chef</span>)</li>
+          </ul>
         </div>
       </form>
     </section>
@@ -817,7 +819,7 @@
     <script src="vendor/jspdf.umd.min.js?v=20260503-18"></script>
     <script src="vendor/xlsx.full.min.js?v=20260522"></script>
     <script src="i18n.js?v=20260519-cloud"></script>
-    <script src="js/immobiliencheck-cloud.js?v=20260519-cloud"></script>
-    <script src="app.js?v=20260522-import"></script>
+    <script src="js/immobiliencheck-cloud.js?v=20260605-demo-hint"></script>
+    <script src="app.js?v=20260605-demo-hint"></script>
   </body>
 </html>

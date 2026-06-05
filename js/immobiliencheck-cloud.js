@@ -55,6 +55,8 @@
     try {
       const res = await fetch(apiUrl("/api/v1/health"), { credentials: "same-origin" });
       if (!res.ok) return false;
+      const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.includes("application/json")) return false;
       const data = await res.json();
       return Boolean(data && data.ok);
     } catch (e) {
