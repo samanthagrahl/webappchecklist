@@ -16,7 +16,7 @@
         }
       }());
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260605-checklist-templates" />
+    <link rel="stylesheet" href="styles.css?v=20260605-template-zones" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -603,7 +603,7 @@
                   ></div>
                 </div>
                 <div class="calendar-field calendar-field-span-2-md hidden" id="calendarHausZonesWrap">
-                  <span class="calendar-field-label" id="calendarHausZonesGroupLabel" data-i18n="cal.hausZonesLbl">Bereiche (nur Haus & Garten)</span>
+                  <span class="calendar-field-label" id="calendarHausZonesGroupLabel" data-i18n="cal.hausZonesLbl">Bereiche je Checkliste</span>
                   <div
                     id="calendarHausZoneCheckboxes"
                     class="calendar-haus-zone-checkboxes"
@@ -771,6 +771,24 @@
               <p class="checkpoint-access-hint" id="checkpointAccessHintRestricted" data-i18n="cp.restrictHint">Sonst hier freischalten (mehrere möglich):</p>
               <div id="checkpointEmployeeAccess" class="checkpoint-employee-access"></div>
             </div>
+            <div class="checkpoint-zones-block" id="checkpointZonesBlock">
+              <div class="checkpoint-zones-head">
+                <h3 class="checkpoint-zones-title" data-i18n="cp.zonesSection">Bereiche (optional)</h3>
+                <p class="checkpoint-zones-hint muted" data-i18n="cp.zonesHint">Bereiche sind optional. Wenn Sie welche anlegen, können Prüfpunkte zugeordnet und im Kalender gefiltert werden.</p>
+              </div>
+              <div id="checkpointZoneList" class="checkpoint-zone-list"></div>
+              <form class="checkpoint-zone-form" id="checkpointZoneForm">
+                <label class="checkpoint-lang-field">
+                  <span data-i18n="cp.fieldDeLbl">Deutsch</span>
+                  <input id="checkpointZoneNameDe" type="text" autocomplete="off" data-i18n-placeholder="cp.zoneNameDePh" />
+                </label>
+                <label class="checkpoint-lang-field">
+                  <span data-i18n="cp.fieldEnLbl">Englisch</span>
+                  <input id="checkpointZoneNameEn" type="text" autocomplete="off" data-i18n-placeholder="cp.zoneNameEnPh" />
+                </label>
+                <button class="secondary-button" id="checkpointZoneSaveButton" type="submit" data-i18n="cp.zoneAdd">Bereich hinzufügen</button>
+              </form>
+            </div>
             <form class="checkpoint-form" id="checkpointForm">
               <div class="checkpoint-form-row">
                 <label class="checkpoint-lang-field">
@@ -785,7 +803,7 @@
               </div>
               <div class="checkpoint-form-zone-row hidden" id="checkpointHausZoneRow">
                 <label class="checkpoint-zone-field">
-                  <span data-i18n="cp.zoneLbl">Bereich (Haus &amp; Garten)</span>
+                  <span data-i18n="cp.zoneLbl">Bereich</span>
                   <select id="checkpointHausZone" data-i18n-aria="cp.zoneAria"></select>
                 </label>
               </div>
@@ -829,8 +847,8 @@
 
     <script src="vendor/jspdf.umd.min.js?v=20260503-18"></script>
     <script src="vendor/xlsx.full.min.js?v=20260522"></script>
-    <script src="i18n.js?v=20260605-checklist-templates"></script>
+    <script src="i18n.js?v=20260605-template-zones"></script>
     <script src="js/immobiliencheck-cloud.js?v=20260605-demo-hint"></script>
-    <script src="app.js?v=20260605-checklist-templates"></script>
+    <script src="app.js?v=20260605-template-zones"></script>
   </body>
 </html>

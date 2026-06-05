@@ -1946,6 +1946,64 @@ select.boss-status-select {
   grid-template-columns: 1fr auto;
 }
 
+.checkpoint-zones-block {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.checkpoint-zones-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.checkpoint-zones-hint {
+  margin: 0;
+  font-size: 13px;
+}
+
+.checkpoint-zone-list {
+  display: grid;
+  gap: 8px;
+}
+
+.checkpoint-zone-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.checkpoint-zone-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.checkpoint-zone-form {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+}
+
+.calendar-template-zone-block {
+  display: grid;
+  gap: 6px;
+}
+
+.calendar-template-zone-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .checkpoint-manager-template-label {
   display: grid;
   gap: 6px;

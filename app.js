@@ -518,18 +518,11 @@ function inferHausZoneFromCheckpointLocales(loc) {
 }
 
 function hausCheckpointZoneFromDef(def) {
-  if (def && typeof def === "object" && !Array.isArray(def)) {
-    const z = String(def.zone || "").trim();
-    if (isHausCheckpointZoneId(z)) return z;
-  }
-  const loc = normalizeCheckpointDef(def, { explicit: true });
-  return inferHausZoneFromCheckpointLocales(loc);
+  return checkpointZoneFromDef(def, getChecklistTemplateById(HAUS_CHECKLIST_TEMPLATE_ID));
 }
 
 function hausCheckpointRowKey(def) {
-  const canon = checkpointCanonical(def);
-  if (!canon) return "";
-  return `${hausCheckpointZoneFromDef(def)}${HAUS_CHECKPOINT_ROW_KEY_SEP}${canon}`;
+  return checkpointRowKey(def, getChecklistTemplateById(HAUS_CHECKLIST_TEMPLATE_ID));
 }
 
 function parseHausCheckpointStoredKey(key) {
@@ -544,73 +537,45 @@ function parseHausCheckpointStoredKey(key) {
 }
 
 function hausStoredKeyMatchesDef(storedKey, def) {
-  const sk = String(storedKey || "").trim();
-  if (!sk) return false;
-  if (sk === hausCheckpointRowKey(def)) return true;
-  const parsed = parseHausCheckpointStoredKey(sk);
-  if (parsed.zone) {
-    return parsed.zone === hausCheckpointZoneFromDef(def) && parsed.canon === checkpointCanonical(def);
-  }
-  return parsed.canon === checkpointCanonical(def);
+  return storedKeyMatchesDef(storedKey, def, getChecklistTemplateById(HAUS_CHECKLIST_TEMPLATE_ID));
 }
 
 function hausStoredKeySetHasDef(keySet, def) {
-  const set = keySet instanceof Set ? keySet : new Set(keySet);
-  for (const k of set) {
-    if (hausStoredKeyMatchesDef(k, def)) return true;
-  }
-  return false;
+  return storedKeySetHasDef(keySet, def, getChecklistTemplateById(HAUS_CHECKLIST_TEMPLATE_ID));
 }
 
 function normalizeHausCustomerCheckpointKeysForSave(keys, template) {
-  const cps = (template && template.checkpoints) || [];
-  const out = [];
-  const seen = new Set();
-  (keys || []).forEach((key) => {
-    const sk = String(key || "").trim();
-    if (!sk) return;
-    const parsed = parseHausCheckpointStoredKey(sk);
-    if (parsed.zone) {
-      if (!seen.has(sk)) {
-        seen.add(sk);
-        out.push(sk);
-      }
-      return;
-    }
-    cps.forEach((def) => {
-      if (checkpointCanonical(def) !== parsed.canon) return;
-      const rk = hausCheckpointRowKey(def);
-      if (rk && !seen.has(rk)) {
-        seen.add(rk);
-        out.push(rk);
-      }
-    });
-  });
-  return out;
+  return normalizeCustomerCheckpointKeysForSave(keys, template);
 }
 
 /**
  * Zeile in einer Checklisten-Vorlage: für „Haus & Garten“ immer { de, en, zone },
  * sonst nur zweisprachige Locales (wie bisher).
  */
-function normalizeTemplateCheckpointRow(item, templateId) {
+function normalizeTemplateCheckpointRow(item, templateId, templateZones) {
   const tid = String(templateId || "").trim();
+  const zones = Array.isArray(templateZones) ? templateZones : normalizeTemplateZones(null, tid);
+  const usesZones = zones.length > 0;
   if (typeof item === "string") {
     const loc = normalizeCheckpointDef(item);
     if (!(loc.de || loc.en)) return null;
-    if (tid === HAUS_CHECKLIST_TEMPLATE_ID) {
-      const zone = inferHausZoneFromCheckpointLocales(loc);
-      return Object.assign({}, loc, { zone });
-    }
-    return loc;
+    if (!usesZones) return loc;
+    const zone = tid === HAUS_CHECKLIST_TEMPLATE_ID
+      ? inferHausZoneFromCheckpointLocales(loc)
+      : (zones[0] ? zones[0].id : DEFAULT_HAUS_CHECKPOINT_ZONE);
+    const safeZone = isZoneIdForTemplate({ zones }, zone) ? zone : defaultZoneIdForTemplate({ zones });
+    return Object.assign({}, loc, { zone: safeZone });
   }
   const loc = normalizeCheckpointDef(item, { explicit: true });
   if (!(loc.de || loc.en)) return null;
-  if (tid !== HAUS_CHECKLIST_TEMPLATE_ID) {
-    return loc;
-  }
+  if (!usesZones) return loc;
   let zone = item && typeof item === "object" && !Array.isArray(item) ? String(item.zone || "").trim() : "";
-  if (!isHausCheckpointZoneId(zone)) zone = inferHausZoneFromCheckpointLocales(loc);
+  if (!isZoneIdForTemplate({ zones }, zone)) {
+    zone = tid === HAUS_CHECKLIST_TEMPLATE_ID
+      ? inferHausZoneFromCheckpointLocales(loc)
+      : defaultZoneIdForTemplate({ zones });
+  }
+  if (!isZoneIdForTemplate({ zones }, zone)) zone = defaultZoneIdForTemplate({ zones });
   return Object.assign({}, loc, { zone });
 }
 
@@ -634,6 +599,286 @@ function ensureHausGartenCheckpointZonesPersisted(normalizedTemplates, rawTempla
   appStorageSet(checklistTemplatesKey, JSON.stringify(normalizedTemplates));
 }
 
+const DEFAULT_BUILT_IN_ZONE_NAMES = {
+  general: ["Allgemein", "General"],
+  pool: ["Pool", "Pool"],
+  zone_1: ["Zone 1", "Zone 1"],
+  zone_2: ["Zone 2", "Zone 2"],
+  zone_3: ["Zone 3", "Zone 3"],
+  zone_4: ["Zone 4", "Zone 4"]
+};
+
+function buildDefaultHausGartenZoneDefs() {
+  return HAUS_CHECKPOINT_ZONE_IDS.map((id) => ({
+    id,
+    nameDe: DEFAULT_BUILT_IN_ZONE_NAMES[id][0],
+    nameEn: DEFAULT_BUILT_IN_ZONE_NAMES[id][1]
+  }));
+}
+
+function normalizeTemplateZoneDef(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const id = String(raw.id || "").trim();
+  const nameDe = String(raw.nameDe || raw.name || "").trim();
+  const nameEn = String(raw.nameEn || "").trim();
+  if (!id) return null;
+  return { id, nameDe: nameDe || id, nameEn: nameEn || nameDe || id };
+}
+
+function normalizeTemplateZones(rawZones, templateId) {
+  if (!Array.isArray(rawZones) || !rawZones.length) {
+    if (templateId === HAUS_CHECKLIST_TEMPLATE_ID) return buildDefaultHausGartenZoneDefs();
+    return [];
+  }
+  const out = [];
+  const seen = new Set();
+  rawZones.forEach((z) => {
+    const n = normalizeTemplateZoneDef(z);
+    if (!n || seen.has(n.id)) return;
+    seen.add(n.id);
+    out.push(n);
+  });
+  return out;
+}
+
+function getTemplateZones(template) {
+  if (!template) return [];
+  return Array.isArray(template.zones) ? template.zones : [];
+}
+
+function templateUsesZones(templateOrId) {
+  const tpl = typeof templateOrId === "string" ? getChecklistTemplateById(templateOrId) : templateOrId;
+  return getTemplateZones(tpl).length > 0;
+}
+
+function isZoneIdForTemplate(template, zoneId) {
+  const z = String(zoneId || "").trim();
+  return getTemplateZones(template).some((item) => item.id === z);
+}
+
+function defaultZoneIdForTemplate(template) {
+  const zones = getTemplateZones(template);
+  return zones[0] ? zones[0].id : DEFAULT_HAUS_CHECKPOINT_ZONE;
+}
+
+function zoneDefLabel(zoneDef) {
+  if (!zoneDef) return "";
+  const lang = intlLangSafe();
+  if (lang === "en" && zoneDef.nameEn) return zoneDef.nameEn;
+  return zoneDef.nameDe || zoneDef.nameEn || zoneDef.id;
+}
+
+function zoneGroupTitleForTemplate(template, zoneId) {
+  const zid = String(zoneId || "").trim();
+  const def = getTemplateZones(template).find((z) => z.id === zid);
+  if (def) return zoneDefLabel(def);
+  return hausZoneGroupTitle(zid);
+}
+
+function slugifyTemplateZoneId(name) {
+  const base = String(name || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return base || `zone_${Date.now()}`;
+}
+
+function uniqueZoneIdForTemplate(template, baseId) {
+  const stem = String(baseId || "").trim() || `zone_${Date.now()}`;
+  const zones = getTemplateZones(template);
+  if (!zones.some((z) => z.id === stem)) return stem;
+  let suffix = 2;
+  while (zones.some((z) => z.id === `${stem}_${suffix}`)) suffix += 1;
+  return `${stem}_${suffix}`;
+}
+
+function checkpointZoneFromDef(def, template) {
+  const tpl = template || null;
+  if (!templateUsesZones(tpl)) return "";
+  if (def && typeof def === "object" && !Array.isArray(def)) {
+    const z = String(def.zone || "").trim();
+    if (isZoneIdForTemplate(tpl, z)) return z;
+  }
+  if (tpl && tpl.id === HAUS_CHECKLIST_TEMPLATE_ID) {
+    const loc = normalizeCheckpointDef(def, { explicit: true });
+    const inferred = inferHausZoneFromCheckpointLocales(loc);
+    if (isZoneIdForTemplate(tpl, inferred)) return inferred;
+  }
+  return defaultZoneIdForTemplate(tpl);
+}
+
+function checkpointRowKey(def, template) {
+  const canon = checkpointCanonical(def);
+  if (!canon) return "";
+  if (!templateUsesZones(template)) return canon;
+  const zone = checkpointZoneFromDef(def, template);
+  return `${zone}${HAUS_CHECKPOINT_ROW_KEY_SEP}${canon}`;
+}
+
+function parseCheckpointStoredKey(key, template) {
+  const s = String(key || "").trim();
+  const sep = HAUS_CHECKPOINT_ROW_KEY_SEP;
+  const i = s.indexOf(sep);
+  if (!templateUsesZones(template) || i < 0) return { zone: null, canon: s };
+  const zone = s.slice(0, i);
+  const canon = s.slice(i + sep.length);
+  if (!isZoneIdForTemplate(template, zone) || !canon) return { zone: null, canon: s };
+  return { zone, canon };
+}
+
+function storedKeyMatchesDef(storedKey, def, template) {
+  const sk = String(storedKey || "").trim();
+  if (!sk) return false;
+  if (sk === checkpointRowKey(def, template)) return true;
+  const parsed = parseCheckpointStoredKey(sk, template);
+  if (parsed.zone) {
+    return parsed.zone === checkpointZoneFromDef(def, template) && parsed.canon === checkpointCanonical(def);
+  }
+  return parsed.canon === checkpointCanonical(def);
+}
+
+function storedKeySetHasDef(keySet, def, template) {
+  const set = keySet instanceof Set ? keySet : new Set(keySet);
+  for (const k of set) {
+    if (storedKeyMatchesDef(k, def, template)) return true;
+  }
+  return false;
+}
+
+function normalizeCustomerCheckpointKeysForSave(keys, template) {
+  const cps = (template && template.checkpoints) || [];
+  const out = [];
+  const seen = new Set();
+  (keys || []).forEach((key) => {
+    const sk = String(key || "").trim();
+    if (!sk) return;
+    const parsed = parseCheckpointStoredKey(sk, template);
+    if (parsed.zone) {
+      if (!seen.has(sk)) {
+        seen.add(sk);
+        out.push(sk);
+      }
+      return;
+    }
+    cps.forEach((def) => {
+      if (checkpointCanonical(def) !== parsed.canon) return;
+      const rk = checkpointRowKey(def, template);
+      if (rk && !seen.has(rk)) {
+        seen.add(rk);
+        out.push(rk);
+      }
+    });
+  });
+  return out;
+}
+
+function sanitizeAssignmentZoneIdsForTemplate(templateId, raw) {
+  const tpl = getChecklistTemplateById(templateId);
+  if (!templateUsesZones(tpl)) return [];
+  if (!raw || !Array.isArray(raw)) return [];
+  return [...new Set(raw.map((z) => String(z || "").trim()).filter((z) => isZoneIdForTemplate(tpl, z)))];
+}
+
+function normalizeEntryZoneMap(entry) {
+  const map = entry && entry.checklistZoneIdsByTemplate && typeof entry.checklistZoneIdsByTemplate === "object"
+    ? Object.assign({}, entry.checklistZoneIdsByTemplate)
+    : {};
+  if (entry && Array.isArray(entry.hausGartenZoneIds) && entry.hausGartenZoneIds.length) {
+    if (!map[HAUS_CHECKLIST_TEMPLATE_ID] || !map[HAUS_CHECKLIST_TEMPLATE_ID].length) {
+      map[HAUS_CHECKLIST_TEMPLATE_ID] = sanitizeAssignmentZoneIdsForTemplate(
+        HAUS_CHECKLIST_TEMPLATE_ID,
+        entry.hausGartenZoneIds
+      );
+    }
+  }
+  const out = {};
+  Object.keys(map).forEach((tid) => {
+    const ids = sanitizeAssignmentZoneIdsForTemplate(tid, map[tid]);
+    if (ids.length) out[tid] = ids;
+  });
+  return out;
+}
+
+function effectiveZonesForEntryAndTemplate(entry, templateId) {
+  const map = normalizeEntryZoneMap(entry);
+  const stored = map[templateId];
+  if (stored && stored.length) return stored;
+  if (templateUsesZones(templateId)) {
+    return getTemplateZones(getChecklistTemplateById(templateId)).map((z) => z.id);
+  }
+  return [];
+}
+
+function filterCustomerCheckpointsByZones(customer, templateId, zoneIds) {
+  const tpl = getChecklistTemplateById(templateId);
+  const zones = sanitizeAssignmentZoneIdsForTemplate(templateId, zoneIds);
+  const cust = new Set(getCustomerCheckpointsForTemplate(customer, templateId));
+  if (!tpl || !zones.length) return [...cust];
+  const zoneSet = new Set(zones);
+  return (tpl.checkpoints || [])
+    .filter((def) => zoneSet.has(checkpointZoneFromDef(def, tpl)) && storedKeySetHasDef(cust, def, tpl))
+    .map((def) => checkpointRowKey(def, tpl));
+}
+
+function validateCustomerHasCheckpointsInZones(customer, templateId, zoneIds) {
+  const zones = sanitizeAssignmentZoneIdsForTemplate(templateId, zoneIds);
+  if (!zones.length) return false;
+  const filtered = filterCustomerCheckpointsByZones(customer, templateId, zones);
+  if (!filtered.length) {
+    const meta = getChecklistTemplateById(templateId);
+    showToast(t("toast.cpMissingZones", { name: meta ? meta.name : templateId }));
+    return false;
+  }
+  return true;
+}
+
+function applyZoneSelectionsToEntry(row, templateZoneSelections, tplIds) {
+  const map = {};
+  (tplIds || []).forEach((tid) => {
+    if (!templateUsesZones(tid)) return;
+    const sel = templateZoneSelections && templateZoneSelections[tid];
+    let ids = sanitizeAssignmentZoneIdsForTemplate(tid, sel);
+    if (!ids.length) {
+      ids = getTemplateZones(getChecklistTemplateById(tid)).map((z) => z.id);
+    }
+    if (ids.length) map[tid] = ids;
+  });
+  if (Object.keys(map).length) {
+    row.checklistZoneIdsByTemplate = map;
+    if (map[HAUS_CHECKLIST_TEMPLATE_ID]) row.hausGartenZoneIds = map[HAUS_CHECKLIST_TEMPLATE_ID].slice();
+  } else {
+    delete row.checklistZoneIdsByTemplate;
+    delete row.hausGartenZoneIds;
+  }
+}
+
+function validateTemplateZoneSelectionsForCustomer(customer, tplIds, templateZoneSelections) {
+  for (let i = 0; i < tplIds.length; i += 1) {
+    const tid = tplIds[i];
+    if (!templateUsesZones(tid)) continue;
+    const zones = (templateZoneSelections && templateZoneSelections[tid]) || [];
+    const sanitized = sanitizeAssignmentZoneIdsForTemplate(tid, zones);
+    if (!sanitized.length) {
+      showToast(t("toast.zonesRequired"));
+      return false;
+    }
+    if (!validateCustomerHasCheckpointsInZones(customer, tid, sanitized)) return false;
+  }
+  return true;
+}
+
+function normalizeCalendarZoneArg(arg, tplIds) {
+  if (arg && typeof arg === "object" && !Array.isArray(arg)) return Object.assign({}, arg);
+  const map = {};
+  if (Array.isArray(arg) && arg.length && tplIds && tplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID)) {
+    map[HAUS_CHECKLIST_TEMPLATE_ID] = sanitizeAssignmentHausGartenZoneIds(arg);
+  }
+  return map;
+}
+
 function hausZoneGroupTitle(zoneId) {
   const z = String(zoneId || "").trim();
   const keys = {
@@ -648,12 +893,12 @@ function hausZoneGroupTitle(zoneId) {
   return t(keys[z] || "zone.other");
 }
 
-function createChecklistZoneGroupShell(zoneId) {
+function createChecklistZoneGroupShell(zoneId, template) {
   const wrap = document.createElement("div");
   wrap.className = "checklist-zone-group";
   const title = document.createElement("h4");
   title.className = "checklist-zone-title";
-  title.textContent = hausZoneGroupTitle(zoneId);
+  title.textContent = zoneGroupTitleForTemplate(template, zoneId);
   const inner = document.createElement("div");
   inner.className = "checklist-zone-items";
   wrap.appendChild(title);
@@ -662,26 +907,31 @@ function createChecklistZoneGroupShell(zoneId) {
 }
 
 /** filterCanonSet: Set von Kanon-Schlüsseln oder null = alle Punkte der Vorlage */
-function appendHausGroupedChecklistItemRows(targetEl, tmpl, filterCanonSet) {
-  if (!targetEl || !tmpl) return;
+function appendGroupedChecklistItemRows(targetEl, tmpl, filterCanonSet) {
+  if (!targetEl || !tmpl || !templateUsesZones(tmpl)) return;
   const wanted = filterCanonSet instanceof Set ? filterCanonSet : null;
-  HAUS_CHECKPOINT_ZONE_IDS.forEach((zoneId) => {
+  getTemplateZones(tmpl).forEach((zoneDef) => {
+    const zoneId = zoneDef.id;
     const zoneDefs = (tmpl.checkpoints || []).filter((def) => {
-      if (hausCheckpointZoneFromDef(def) !== zoneId) return false;
-      if (wanted && !hausStoredKeySetHasDef(wanted, def)) return false;
+      if (checkpointZoneFromDef(def, tmpl) !== zoneId) return false;
+      if (wanted && !storedKeySetHasDef(wanted, def, tmpl)) return false;
       return true;
     });
     if (!zoneDefs.length) return;
-    const { wrap, inner } = createChecklistZoneGroupShell(zoneId);
+    const { wrap, inner } = createChecklistZoneGroupShell(zoneId, tmpl);
     targetEl.appendChild(wrap);
     zoneDefs.forEach((def) => {
-      addChecklistItem(def, false, "", null, hausCheckpointRowKey(def), inner);
+      addChecklistItem(def, false, "", null, checkpointRowKey(def, tmpl), inner);
     });
   });
 }
 
-function appendHausGroupedSubmissionChecklistRows(targetEl, tmpl, entryItems) {
-  if (!targetEl || !tmpl || !Array.isArray(entryItems)) return;
+function appendHausGroupedChecklistItemRows(targetEl, tmpl, filterCanonSet) {
+  appendGroupedChecklistItemRows(targetEl, tmpl, filterCanonSet);
+}
+
+function appendGroupedSubmissionChecklistRows(targetEl, tmpl, entryItems) {
+  if (!targetEl || !tmpl || !Array.isArray(entryItems) || !templateUsesZones(tmpl)) return;
   const byCanon = new Map();
   entryItems.forEach((it) => {
     const c = String(it.checkpointCanon || "").trim()
@@ -690,18 +940,19 @@ function appendHausGroupedSubmissionChecklistRows(targetEl, tmpl, entryItems) {
     if (c) byCanon.set(c, it);
   });
   const used = new Set();
-  HAUS_CHECKPOINT_ZONE_IDS.forEach((zoneId) => {
-    const zoneDefs = (tmpl.checkpoints || []).filter((def) => hausCheckpointZoneFromDef(def) === zoneId);
+  getTemplateZones(tmpl).forEach((zoneDef) => {
+    const zoneId = zoneDef.id;
+    const zoneDefs = (tmpl.checkpoints || []).filter((def) => checkpointZoneFromDef(def, tmpl) === zoneId);
     const innerPairs = [];
     zoneDefs.forEach((def) => {
-      const rowKey = hausCheckpointRowKey(def);
+      const rowKey = checkpointRowKey(def, tmpl);
       const canon = checkpointCanonical(def);
       const row = byCanon.get(rowKey) || byCanon.get(canon);
       if (!row) return;
       innerPairs.push({ row, rowKey });
     });
     if (!innerPairs.length) return;
-    const { wrap, inner } = createChecklistZoneGroupShell(zoneId);
+    const { wrap, inner } = createChecklistZoneGroupShell(zoneId, tmpl);
     targetEl.appendChild(wrap);
     innerPairs.forEach(({ row, rowKey }) => {
       used.add(rowKey);
@@ -717,7 +968,7 @@ function appendHausGroupedSubmissionChecklistRows(targetEl, tmpl, entryItems) {
     return c && !used.has(c);
   });
   if (!orphans.length) return;
-  const { wrap, inner } = createChecklistZoneGroupShell("other");
+  const { wrap, inner } = createChecklistZoneGroupShell("other", tmpl);
   targetEl.appendChild(wrap);
   orphans.forEach((row) => {
     const c = String(row.checkpointCanon || "").trim()
@@ -727,9 +978,14 @@ function appendHausGroupedSubmissionChecklistRows(targetEl, tmpl, entryItems) {
   });
 }
 
+function appendHausGroupedSubmissionChecklistRows(targetEl, tmpl, entryItems) {
+  appendGroupedSubmissionChecklistRows(targetEl, tmpl, entryItems);
+}
+
 function getChecklistFormParentForNewItem() {
   const tid = getActiveChecklistFormTemplateIdFromUi();
-  if (tid !== HAUS_CHECKLIST_TEMPLATE_ID || !el.checklistItems) return el.checklistItems;
+  const tmpl = getChecklistTemplateById(tid);
+  if (!templateUsesZones(tmpl) || !el.checklistItems) return el.checklistItems;
   const zones = [...el.checklistItems.querySelectorAll(".checklist-zone-items")];
   if (zones.length) return zones[zones.length - 1];
   return el.checklistItems;
@@ -855,9 +1111,10 @@ function normalizeChecklistTemplatesFromStorage(parsed) {
   if (!Array.isArray(parsed)) return null;
   return parsed.map((raw) => {
     const tplId = typeof raw.id === "string" && raw.id.trim() ? raw.id.trim() : "";
+    const zones = normalizeTemplateZones(raw.zones, tplId);
     const checkpoints = Array.isArray(raw.checkpoints)
       ? raw.checkpoints
-          .map((item) => normalizeTemplateCheckpointRow(item, tplId))
+          .map((item) => normalizeTemplateCheckpointRow(item, tplId, zones))
           .filter((pair) => pair && (pair.de || pair.en))
       : [];
     const assigned = Array.isArray(raw.assignedEmployeeUsernames)
@@ -867,7 +1124,8 @@ function normalizeChecklistTemplatesFromStorage(parsed) {
       id: typeof raw.id === "string" && raw.id.trim() ? raw.id.trim() : `tpl-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       name: typeof raw.name === "string" && raw.name.trim() ? raw.name.trim() : "Checkliste",
       checkpoints,
-      assignedEmployeeUsernames: assigned
+      assignedEmployeeUsernames: assigned,
+      zones
     };
   }).filter((item) => item.id && item.name);
 }
@@ -978,7 +1236,8 @@ function createChecklistTemplate(displayName) {
     id,
     name,
     checkpoints: [],
-    assignedEmployeeUsernames: []
+    assignedEmployeeUsernames: [],
+    zones: []
   });
   persistChecklistTemplates();
   pendingCustomerCheckpointSets[id] = [];
@@ -1169,8 +1428,8 @@ function collectCheckpointSetsForCustomerSave() {
   const result = {};
   checklistTemplates.forEach((t) => {
     let list = [...(pendingCustomerCheckpointSets[t.id] || [])];
-    if (t.id === HAUS_CHECKLIST_TEMPLATE_ID) {
-      list = normalizeHausCustomerCheckpointKeysForSave(list, t);
+    if (templateUsesZones(t)) {
+      list = normalizeCustomerCheckpointKeysForSave(list, t);
     }
     result[t.id] = list;
   });
@@ -1186,14 +1445,15 @@ function renderCustomerCheckpointOptions(selectedList) {
     return;
   }
   const selectedSet = new Set(selectedList || []);
-  if (tid === HAUS_CHECKLIST_TEMPLATE_ID) {
-    const blocks = HAUS_CHECKPOINT_ZONE_IDS.map((zoneId) => {
-      const rows = (template.checkpoints || []).filter((item) => hausCheckpointZoneFromDef(item) === zoneId);
+  if (templateUsesZones(template)) {
+    const blocks = getTemplateZones(template).map((zoneDef) => {
+      const zoneId = zoneDef.id;
+      const rows = (template.checkpoints || []).filter((item) => checkpointZoneFromDef(item, template) === zoneId);
       if (!rows.length) return "";
       const inner = rows.map((item) => {
-        const rowKey = hausCheckpointRowKey(item);
+        const rowKey = checkpointRowKey(item, template);
         const labelText = checkpointDefLabelDeSlashEn(item);
-        const checked = hausStoredKeySetHasDef(selectedSet, item);
+        const checked = storedKeySetHasDef(selectedSet, item, template);
         return `
     <label>
       <input type="checkbox" value="${escapeHtml(rowKey)}" ${checked ? "checked" : ""} />
@@ -1202,7 +1462,7 @@ function renderCustomerCheckpointOptions(selectedList) {
       }).join("");
       return `
     <div class="customer-checkpoint-zone">
-      <strong class="customer-checkpoint-zone-title">${escapeHtml(hausZoneGroupTitle(zoneId))}</strong>
+      <strong class="customer-checkpoint-zone-title">${escapeHtml(zoneGroupTitleForTemplate(template, zoneId))}</strong>
       <div class="customer-checkpoint-zone-items">${inner}</div>
     </div>`;
     }).join("");
@@ -1477,6 +1737,12 @@ const el = {
   checkpointNewTemplateName: document.getElementById("checkpointNewTemplateName"),
   checkpointCreateTemplateButton: document.getElementById("checkpointCreateTemplateButton"),
   checkpointDeleteTemplateButton: document.getElementById("checkpointDeleteTemplateButton"),
+  checkpointZonesBlock: document.getElementById("checkpointZonesBlock"),
+  checkpointZoneList: document.getElementById("checkpointZoneList"),
+  checkpointZoneForm: document.getElementById("checkpointZoneForm"),
+  checkpointZoneNameDe: document.getElementById("checkpointZoneNameDe"),
+  checkpointZoneNameEn: document.getElementById("checkpointZoneNameEn"),
+  checkpointZoneSaveButton: document.getElementById("checkpointZoneSaveButton"),
   checkpointEmployeeAccess: document.getElementById("checkpointEmployeeAccess"),
   checkpointAccessAllEmployees: document.getElementById("checkpointAccessAllEmployees"),
   checkpointAccessHintRestricted: document.getElementById("checkpointAccessHintRestricted"),
@@ -2143,40 +2409,20 @@ function validateCustomerHasCheckpointsForTemplateIds(customer, tplIds) {
 
 /** Für Kalender-Einsätze / Regeln: gültige Haus-Bereiche (general, pool, zone_1 …). */
 function sanitizeAssignmentHausGartenZoneIds(raw) {
-  if (!raw || !Array.isArray(raw)) return [];
-  return [...new Set(raw.map((z) => String(z || "").trim()).filter((z) => isHausCheckpointZoneId(z)))];
+  return sanitizeAssignmentZoneIdsForTemplate(HAUS_CHECKLIST_TEMPLATE_ID, raw);
 }
 
 /** Fehlende Angabe = alle Bereiche (bestehende Einsätze ohne Feld). */
 function effectiveHausGartenZonesForEntry(entry) {
-  const z = sanitizeAssignmentHausGartenZoneIds(entry && entry.hausGartenZoneIds);
-  if (z.length) return z;
-  if (entry && normalizeAssignmentTemplateIds(entry).includes(HAUS_CHECKLIST_TEMPLATE_ID)) {
-    return [...HAUS_CHECKPOINT_ZONE_IDS];
-  }
-  return [];
+  return effectiveZonesForEntryAndTemplate(entry, HAUS_CHECKLIST_TEMPLATE_ID);
 }
 
 function filterCustomerHausCheckpointsByZones(customer, zoneIds) {
-  const zones = sanitizeAssignmentHausGartenZoneIds(zoneIds);
-  const tmpl = getChecklistTemplateById(HAUS_CHECKLIST_TEMPLATE_ID);
-  const cust = new Set(getCustomerCheckpointsForTemplate(customer, HAUS_CHECKLIST_TEMPLATE_ID));
-  if (!tmpl || !zones.length) return [...cust];
-  const zoneSet = new Set(zones);
-  return (tmpl.checkpoints || [])
-    .filter((def) => zoneSet.has(hausCheckpointZoneFromDef(def)) && hausStoredKeySetHasDef(cust, def))
-    .map((def) => hausCheckpointRowKey(def));
+  return filterCustomerCheckpointsByZones(customer, HAUS_CHECKLIST_TEMPLATE_ID, zoneIds);
 }
 
 function validateCustomerHasHausCheckpointsInZones(customer, zoneIds) {
-  const zones = sanitizeAssignmentHausGartenZoneIds(zoneIds);
-  if (!zones.length) return false;
-  const filtered = filterCustomerHausCheckpointsByZones(customer, zones);
-  if (!filtered.length) {
-    showToast(t("toast.cpMissingHausZones"));
-    return false;
-  }
-  return true;
+  return validateCustomerHasCheckpointsInZones(customer, HAUS_CHECKLIST_TEMPLATE_ID, zoneIds);
 }
 
 function migrateScheduleTemplateIdsInPlace() {
@@ -3929,52 +4175,94 @@ function getSelectedCalendarTemplateIds() {
     .filter(Boolean);
 }
 
+function calendarZoneCheckboxValue(templateId, zoneId) {
+  return `${templateId}${HAUS_CHECKPOINT_ROW_KEY_SEP}${zoneId}`;
+}
+
+function parseCalendarZoneCheckboxValue(raw) {
+  const s = String(raw || "").trim();
+  const sep = HAUS_CHECKPOINT_ROW_KEY_SEP;
+  const i = s.indexOf(sep);
+  if (i < 0) return null;
+  return { templateId: s.slice(0, i), zoneId: s.slice(i + sep.length) };
+}
+
 function rebuildCalendarHausZoneCheckboxRows() {
   if (!el.calendarHausZoneCheckboxes) return;
   el.calendarHausZoneCheckboxes.innerHTML = "";
-  HAUS_CHECKPOINT_ZONE_IDS.forEach((zoneId) => {
-    const lab = document.createElement("label");
-    lab.className = "calendar-haus-zone-check";
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.value = zoneId;
-    input.checked = true;
-    const span = document.createElement("span");
-    span.textContent = hausZoneGroupTitle(zoneId);
-    lab.appendChild(input);
-    lab.appendChild(span);
-    el.calendarHausZoneCheckboxes.appendChild(lab);
+  const selectedTplIds = getSelectedCalendarTemplateIds();
+  selectedTplIds.forEach((tplId) => {
+    if (!templateUsesZones(tplId)) return;
+    const tpl = getChecklistTemplateById(tplId);
+    const block = document.createElement("div");
+    block.className = "calendar-template-zone-block";
+    const title = document.createElement("div");
+    title.className = "calendar-template-zone-title";
+    title.textContent = tpl ? tpl.name : tplId;
+    block.appendChild(title);
+    const grid = document.createElement("div");
+    grid.className = "calendar-haus-zone-checkboxes";
+    getTemplateZones(tpl).forEach((zoneDef) => {
+      const lab = document.createElement("label");
+      lab.className = "calendar-haus-zone-check";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = calendarZoneCheckboxValue(tplId, zoneDef.id);
+      input.checked = true;
+      const span = document.createElement("span");
+      span.textContent = zoneDefLabel(zoneDef);
+      lab.appendChild(input);
+      lab.appendChild(span);
+      grid.appendChild(lab);
+    });
+    block.appendChild(grid);
+    el.calendarHausZoneCheckboxes.appendChild(block);
   });
 }
 
-function getSelectedCalendarHausGartenZones() {
-  if (!el.calendarHausZoneCheckboxes) return [];
-  return Array.from(el.calendarHausZoneCheckboxes.querySelectorAll('input[type="checkbox"]:checked'))
-    .map((input) => input.value)
-    .filter((id) => isHausCheckpointZoneId(id));
+function getSelectedCalendarTemplateZoneSelections() {
+  const out = {};
+  if (!el.calendarHausZoneCheckboxes) return out;
+  Array.from(el.calendarHausZoneCheckboxes.querySelectorAll('input[type="checkbox"]:checked')).forEach((input) => {
+    const parsed = parseCalendarZoneCheckboxValue(input.value);
+    if (!parsed || !templateUsesZones(parsed.templateId)) return;
+    if (!out[parsed.templateId]) out[parsed.templateId] = [];
+    if (!out[parsed.templateId].includes(parsed.zoneId)) out[parsed.templateId].push(parsed.zoneId);
+  });
+  return out;
 }
 
-function setCalendarHausZoneCheckboxSelection(storedZoneIds) {
+function getSelectedCalendarHausGartenZones() {
+  const map = getSelectedCalendarTemplateZoneSelections();
+  return map[HAUS_CHECKLIST_TEMPLATE_ID] || [];
+}
+
+function setCalendarHausZoneCheckboxSelection(storedZoneMapOrHausIds) {
   if (!el.calendarHausZoneCheckboxes) return;
   const inputs = [...el.calendarHausZoneCheckboxes.querySelectorAll('input[type="checkbox"]')];
   if (!inputs.length) return;
-  const valid = sanitizeAssignmentHausGartenZoneIds(storedZoneIds);
-  if (!valid.length) {
-    inputs.forEach((input) => {
-      input.checked = true;
-    });
-    return;
+  let zoneMap = {};
+  if (storedZoneMapOrHausIds && typeof storedZoneMapOrHausIds === "object" && !Array.isArray(storedZoneMapOrHausIds)) {
+    zoneMap = storedZoneMapOrHausIds;
+  } else if (Array.isArray(storedZoneMapOrHausIds) && storedZoneMapOrHausIds.length) {
+    zoneMap[HAUS_CHECKLIST_TEMPLATE_ID] = sanitizeAssignmentHausGartenZoneIds(storedZoneMapOrHausIds);
   }
-  const want = new Set(valid);
   inputs.forEach((input) => {
-    input.checked = want.has(input.value);
+    const parsed = parseCalendarZoneCheckboxValue(input.value);
+    if (!parsed) return;
+    const list = zoneMap[parsed.templateId];
+    if (!list || !list.length) {
+      input.checked = true;
+      return;
+    }
+    input.checked = list.includes(parsed.zoneId);
   });
 }
 
 function updateCalendarHausZonesVisibilityUi() {
   const wo = Boolean(el.calendarWorkOrderMode && el.calendarWorkOrderMode.checked);
-  const hasHaus = getSelectedCalendarTemplateIds().includes(HAUS_CHECKLIST_TEMPLATE_ID);
-  if (el.calendarHausZonesWrap) el.calendarHausZonesWrap.classList.toggle("hidden", wo || !hasHaus);
+  const hasZones = getSelectedCalendarTemplateIds().some((id) => templateUsesZones(id));
+  if (el.calendarHausZonesWrap) el.calendarHausZonesWrap.classList.toggle("hidden", wo || !hasZones);
 }
 
 function renderCalendarChecklistTemplateCheckboxes(preselectedIds) {
@@ -4037,12 +4325,11 @@ function rebuildChecklistItemsFromTemplate(templateId) {
   const tmpl = getChecklistTemplateById(templateId);
   const tid = templateId || HAUS_CHECKLIST_TEMPLATE_ID;
   const points = tmpl && tmpl.checkpoints && tmpl.checkpoints.length ? tmpl.checkpoints : [...fallbackCheckpointItems];
-  if (tid === HAUS_CHECKLIST_TEMPLATE_ID) {
-    const hausTmpl = getChecklistTemplateById(HAUS_CHECKLIST_TEMPLATE_ID);
-    const effective = hausTmpl && hausTmpl.checkpoints && hausTmpl.checkpoints.length
-      ? hausTmpl
-      : { id: HAUS_CHECKLIST_TEMPLATE_ID, checkpoints: points.map((p) => normalizeTemplateCheckpointRow(p, HAUS_CHECKLIST_TEMPLATE_ID)).filter(Boolean) };
-    appendHausGroupedChecklistItemRows(el.checklistItems, effective, null);
+  if (templateUsesZones(tmpl)) {
+    const effective = tmpl && tmpl.checkpoints && tmpl.checkpoints.length
+      ? tmpl
+      : { id: tid, zones: normalizeTemplateZones(null, tid), checkpoints: points.map((p) => normalizeTemplateCheckpointRow(p, tid, normalizeTemplateZones(null, tid))).filter(Boolean) };
+    appendGroupedChecklistItemRows(el.checklistItems, effective, null);
   } else {
     points.forEach((item) => addChecklistItem(item, false, "", null, checkpointCanonical(item)));
   }
@@ -4239,15 +4526,136 @@ function syncDraftSubmissionsForCustomer(customerId, templateId, nextCheckpointN
   return updatedCount;
 }
 
+let activeTemplateZoneEditId = "";
+
+function getManagingCheckpointTemplate() {
+  return getChecklistTemplateById(checkpointManagerTemplateId);
+}
+
+function renderTemplateZoneManager() {
+  if (!el.checkpointZoneList) return;
+  const template = getManagingCheckpointTemplate();
+  if (!template) {
+    el.checkpointZoneList.innerHTML = "";
+    return;
+  }
+  const zones = getTemplateZones(template);
+  if (!zones.length) {
+    el.checkpointZoneList.innerHTML = `<small class="muted">${escapeHtml(t("cp.zonesEmpty"))}</small>`;
+    return;
+  }
+  el.checkpointZoneList.innerHTML = zones.map((zone) => `
+    <div class="checkpoint-zone-item" data-zone-id="${escapeHtml(zone.id)}">
+      <span>${escapeHtml(zoneDefLabel(zone))}</span>
+      <div class="checkpoint-zone-item-actions">
+        <button class="secondary-button" type="button" data-edit-template-zone="${escapeHtml(zone.id)}">${escapeHtml(t("cp.edit"))}</button>
+        <button class="danger-button" type="button" data-delete-template-zone="${escapeHtml(zone.id)}">${escapeHtml(t("cp.delete"))}</button>
+      </div>
+    </div>
+  `).join("");
+  el.checkpointZoneList.querySelectorAll("[data-edit-template-zone]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const zid = btn.getAttribute("data-edit-template-zone");
+      const zone = zones.find((z) => z.id === zid);
+      if (!zone) return;
+      activeTemplateZoneEditId = zid;
+      if (el.checkpointZoneNameDe) el.checkpointZoneNameDe.value = zone.nameDe || "";
+      if (el.checkpointZoneNameEn) el.checkpointZoneNameEn.value = zone.nameEn || "";
+      if (el.checkpointZoneSaveButton) el.checkpointZoneSaveButton.textContent = t("cp.zoneUpdate");
+    });
+  });
+  el.checkpointZoneList.querySelectorAll("[data-delete-template-zone]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteTemplateZone(btn.getAttribute("data-delete-template-zone")));
+  });
+}
+
+function resetTemplateZoneForm() {
+  activeTemplateZoneEditId = "";
+  if (el.checkpointZoneForm) el.checkpointZoneForm.reset();
+  if (el.checkpointZoneSaveButton) el.checkpointZoneSaveButton.textContent = t("cp.zoneAdd");
+}
+
+function saveTemplateZone() {
+  const template = getManagingCheckpointTemplate();
+  if (!template) return false;
+  const nameDe = el.checkpointZoneNameDe ? el.checkpointZoneNameDe.value.trim() : "";
+  const nameEn = el.checkpointZoneNameEn ? el.checkpointZoneNameEn.value.trim() : "";
+  if (!nameDe && !nameEn) {
+    showToast(t("toast.zoneNameRequired"));
+    return false;
+  }
+  if (!Array.isArray(template.zones)) template.zones = [];
+  if (activeTemplateZoneEditId) {
+    const zone = template.zones.find((z) => z.id === activeTemplateZoneEditId);
+    if (zone) {
+      zone.nameDe = nameDe || nameEn;
+      zone.nameEn = nameEn || nameDe;
+    }
+  } else {
+    const id = uniqueZoneIdForTemplate(template, slugifyTemplateZoneId(nameDe || nameEn));
+    template.zones.push({ id, nameDe: nameDe || nameEn, nameEn: nameEn || nameDe });
+  }
+  persistChecklistTemplates();
+  resetTemplateZoneForm();
+  renderTemplateZoneManager();
+  updateCheckpointHausZoneFieldVisibility();
+  renderCheckpointManager();
+  refreshCustomerCheckpointOptions();
+  showToast(t("toast.zoneSaved"));
+  return true;
+}
+
+function deleteTemplateZone(zoneId) {
+  const template = getManagingCheckpointTemplate();
+  const tplId = checkpointManagerTemplateId;
+  if (!template || !Array.isArray(template.zones)) return;
+  const zid = String(zoneId || "").trim();
+  const zone = template.zones.find((z) => z.id === zid);
+  if (!zone) return;
+  const used = (template.checkpoints || []).some((def) => checkpointZoneFromDef(def, template) === zid);
+  if (used && !window.confirm(t("cp.zoneDeleteConfirm", { name: zoneDefLabel(zone) }))) return;
+  const fallback = template.zones.find((z) => z.id !== zid);
+  template.zones = template.zones.filter((z) => z.id !== zid);
+  if (used && fallback) {
+    template.checkpoints.forEach((def, index) => {
+      if (checkpointZoneFromDef(def, template) !== zid) return;
+      template.checkpoints[index] = Object.assign({}, def, { zone: fallback.id });
+    });
+    customerDb = customerDb.map((entry) => {
+      const nextEntry = Object.assign({}, entry);
+      migrateCustomerCheckpointSetsIfNeeded(nextEntry);
+      const list = (nextEntry.checkpointSets[tplId] || []).map((key) => {
+        const parsed = parseCheckpointStoredKey(key, template);
+        if (parsed.zone !== zid) return key;
+        const def = (template.checkpoints || []).find((item) => checkpointCanonical(item) === parsed.canon);
+        return def ? checkpointRowKey(def, template) : key;
+      });
+      nextEntry.checkpointSets[tplId] = list;
+      syncCustomerLegacyCheckpointsField(nextEntry);
+      return nextEntry;
+    });
+    persistCustomerDb();
+  }
+  persistChecklistTemplates();
+  resetTemplateZoneForm();
+  renderTemplateZoneManager();
+  updateCheckpointHausZoneFieldVisibility();
+  renderCheckpointManager();
+  refreshCustomerCheckpointOptions();
+  renderCustomerDb();
+  showToast(t("toast.zoneDeleted"));
+}
+
 function wireCheckpointManagerRow(row, item, index) {
+  const template = getManagingCheckpointTemplate();
   const editButton = row.querySelector("[data-edit-checkpoint]");
   if (editButton) editButton.addEventListener("click", () => {
     activeCheckpointEditIndex = index;
     const def = normalizeCheckpointDef(item, { explicit: true });
     if (el.checkpointNameDe) el.checkpointNameDe.value = def.de;
     if (el.checkpointNameEn) el.checkpointNameEn.value = def.en;
-    if (el.checkpointHausZone) {
-      el.checkpointHausZone.value = hausCheckpointZoneFromDef(item);
+    if (el.checkpointHausZone && templateUsesZones(template)) {
+      el.checkpointHausZone.value = checkpointZoneFromDef(item, template);
     }
     if (el.checkpointSaveButton) el.checkpointSaveButton.textContent = t("cp.update");
     if (el.checkpointNameDe) el.checkpointNameDe.focus();
@@ -4259,21 +4667,27 @@ function wireCheckpointManagerRow(row, item, index) {
 }
 
 function updateCheckpointHausZoneFieldVisibility() {
-  const show = checkpointManagerTemplateId === HAUS_CHECKLIST_TEMPLATE_ID;
+  const template = getManagingCheckpointTemplate();
+  const show = templateUsesZones(template);
   if (el.checkpointHausZoneRow) el.checkpointHausZoneRow.classList.toggle("hidden", !show);
-  if (show && el.checkpointHausZone && el.checkpointHausZone.dataset.zonesBuild !== HAUS_CHECKPOINT_ZONE_SELECT_BUILD) {
-    el.checkpointHausZone.innerHTML = HAUS_CHECKPOINT_ZONE_IDS.map((id) => `
-      <option value="${escapeHtml(id)}">${escapeHtml(hausZoneGroupTitle(id))}</option>
+  const buildKey = template ? `${template.id}:${getTemplateZones(template).map((z) => z.id).join(",")}` : "";
+  if (show && el.checkpointHausZone && el.checkpointHausZone.dataset.zonesBuild !== buildKey) {
+    el.checkpointHausZone.innerHTML = getTemplateZones(template).map((zone) => `
+      <option value="${escapeHtml(zone.id)}">${escapeHtml(zoneDefLabel(zone))}</option>
     `).join("");
-    el.checkpointHausZone.dataset.zonesBuild = HAUS_CHECKPOINT_ZONE_SELECT_BUILD;
-    el.checkpointHausZone.value = DEFAULT_HAUS_CHECKPOINT_ZONE;
+    el.checkpointHausZone.dataset.zonesBuild = buildKey;
+    el.checkpointHausZone.value = defaultZoneIdForTemplate(template);
   }
+  renderTemplateZoneManager();
 }
 
 function resetCheckpointForm() {
   activeCheckpointEditIndex = -1;
   if (el.checkpointForm) el.checkpointForm.reset();
-  if (el.checkpointHausZone) el.checkpointHausZone.value = DEFAULT_HAUS_CHECKPOINT_ZONE;
+  const template = getManagingCheckpointTemplate();
+  if (el.checkpointHausZone && templateUsesZones(template)) {
+    el.checkpointHausZone.value = defaultZoneIdForTemplate(template);
+  }
   if (el.checkpointSaveButton) {
     el.checkpointSaveButton.textContent = t("cp.saveNew");
   }
@@ -4288,17 +4702,19 @@ function renderCheckpointManager() {
   }
 
   el.checkpointList.innerHTML = "";
-  if (checkpointManagerTemplateId === HAUS_CHECKLIST_TEMPLATE_ID) {
-    HAUS_CHECKPOINT_ZONE_IDS.forEach((zoneId) => {
+  const template = getManagingCheckpointTemplate();
+  if (templateUsesZones(template)) {
+    getTemplateZones(template).forEach((zoneDef) => {
+      const zoneId = zoneDef.id;
       const pairs = list
         .map((item, index) => ({ item, index }))
-        .filter(({ item }) => hausCheckpointZoneFromDef(item) === zoneId);
+        .filter(({ item }) => checkpointZoneFromDef(item, template) === zoneId);
       if (!pairs.length) return;
       const group = document.createElement("div");
       group.className = "checkpoint-manager-zone";
       const h = document.createElement("h4");
       h.className = "checkpoint-manager-zone-title";
-      h.textContent = hausZoneGroupTitle(zoneId);
+      h.textContent = zoneDefLabel(zoneDef);
       group.appendChild(h);
       pairs.forEach(({ item, index }) => {
         const row = document.createElement("div");
@@ -4342,6 +4758,7 @@ function saveCheckpoint() {
   }
 
   const tplId = checkpointManagerTemplateId;
+  const template = getManagingCheckpointTemplate();
   const list = managingCheckpointList();
   if (!list) return false;
 
@@ -4350,15 +4767,15 @@ function saveCheckpoint() {
 
   const dedupeDe = nextDef.de.trim().toLowerCase();
   let zoneForDedupe = "";
-  if (tplId === HAUS_CHECKLIST_TEMPLATE_ID) {
+  if (templateUsesZones(template)) {
     zoneForDedupe = el.checkpointHausZone && el.checkpointHausZone.value
       ? el.checkpointHausZone.value.trim()
-      : DEFAULT_HAUS_CHECKPOINT_ZONE;
-    if (!isHausCheckpointZoneId(zoneForDedupe)) zoneForDedupe = DEFAULT_HAUS_CHECKPOINT_ZONE;
+      : defaultZoneIdForTemplate(template);
+    if (!isZoneIdForTemplate(template, zoneForDedupe)) zoneForDedupe = defaultZoneIdForTemplate(template);
   }
   const duplicateIndex = list.findIndex((it, ix) => {
     if (ix === activeCheckpointEditIndex) return false;
-    if (tplId === HAUS_CHECKLIST_TEMPLATE_ID && hausCheckpointZoneFromDef(it) !== zoneForDedupe) return false;
+    if (templateUsesZones(template) && checkpointZoneFromDef(it, template) !== zoneForDedupe) return false;
     const o = normalizeCheckpointDef(it, { explicit: true });
     if (dedupeDe) return o.de.trim().toLowerCase() === dedupeDe;
     return o.en.trim().toLowerCase() === nextDef.en.trim().toLowerCase();
@@ -4369,19 +4786,21 @@ function saveCheckpoint() {
   }
 
   let rowToStore = nextDef;
-  if (tplId === HAUS_CHECKLIST_TEMPLATE_ID) {
-    let z = el.checkpointHausZone && el.checkpointHausZone.value ? el.checkpointHausZone.value.trim() : DEFAULT_HAUS_CHECKPOINT_ZONE;
-    if (!isHausCheckpointZoneId(z)) z = DEFAULT_HAUS_CHECKPOINT_ZONE;
+  if (templateUsesZones(template)) {
+    let z = el.checkpointHausZone && el.checkpointHausZone.value
+      ? el.checkpointHausZone.value.trim()
+      : defaultZoneIdForTemplate(template);
+    if (!isZoneIdForTemplate(template, z)) z = defaultZoneIdForTemplate(template);
     rowToStore = Object.assign({}, nextDef, { zone: z });
   }
 
-  const newStorageKey = tplId === HAUS_CHECKLIST_TEMPLATE_ID
-    ? hausCheckpointRowKey(rowToStore)
+  const newStorageKey = templateUsesZones(template)
+    ? checkpointRowKey(rowToStore, template)
     : checkpointCanonical(nextDef);
 
   if (activeCheckpointEditIndex >= 0) {
-    oldCanon = tplId === HAUS_CHECKLIST_TEMPLATE_ID
-      ? hausCheckpointRowKey(list[activeCheckpointEditIndex])
+    oldCanon = templateUsesZones(template)
+      ? checkpointRowKey(list[activeCheckpointEditIndex], template)
       : checkpointCanonical(list[activeCheckpointEditIndex]);
     list[activeCheckpointEditIndex] = rowToStore;
     if (oldCanon !== newStorageKey) {
@@ -4417,8 +4836,9 @@ function deleteCheckpoint(index) {
   const tplId = checkpointManagerTemplateId;
   const list = managingCheckpointList();
   if (!list || !list[index]) return;
-  const removedName = tplId === HAUS_CHECKLIST_TEMPLATE_ID
-    ? hausCheckpointRowKey(list[index])
+  const template = getManagingCheckpointTemplate();
+  const removedName = templateUsesZones(template)
+    ? checkpointRowKey(list[index], template)
     : checkpointCanonical(list[index]);
   list.splice(index, 1);
 
@@ -4685,8 +5105,8 @@ function editChecklist(id) {
   el.checklistItems.innerHTML = "";
   const editTid = entry.checklistTemplateId || HAUS_CHECKLIST_TEMPLATE_ID;
   const editTmpl = getChecklistTemplateById(editTid);
-  if (editTid === HAUS_CHECKLIST_TEMPLATE_ID && editTmpl) {
-    appendHausGroupedSubmissionChecklistRows(el.checklistItems, editTmpl, entry.items || []);
+  if (templateUsesZones(editTmpl)) {
+    appendGroupedSubmissionChecklistRows(el.checklistItems, editTmpl, entry.items || []);
   } else {
     (entry.items || []).forEach((item) => {
       const canon = String(item.checkpointCanon || "").trim()
@@ -6654,11 +7074,8 @@ function getRecurringEntriesForDate(isoDate) {
         staffComment: rule.staffComment || "",
         checklistTemplateIds: tplIds.slice(),
         checklistTemplateId: tplIds[0],
-        hausGartenZoneIds: (() => {
-          const hz = sanitizeAssignmentHausGartenZoneIds(rule.hausGartenZoneIds);
-          if (hz.length) return hz.slice();
-          return tplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID) ? [...HAUS_CHECKPOINT_ZONE_IDS] : [];
-        })()
+        checklistZoneIdsByTemplate: normalizeEntryZoneMap(rule),
+        hausGartenZoneIds: effectiveZonesForEntryAndTemplate(rule, HAUS_CHECKLIST_TEMPLATE_ID)
       });
     });
 }
@@ -7512,16 +7929,17 @@ function renderCustomerDb(preserveOpenCustomerId) {
       let bodyContent = "";
       if (!pts.length) {
         bodyContent = `<small>${escapeHtml(t("cust.noCpChosen"))}</small>`;
-      } else if (template.id === HAUS_CHECKLIST_TEMPLATE_ID) {
+      } else if (templateUsesZones(template)) {
         const wanted = new Set(pts);
-        const blocks = HAUS_CHECKPOINT_ZONE_IDS.map((zoneId) => {
+        const blocks = getTemplateZones(template).map((zoneDef) => {
+          const zoneId = zoneDef.id;
           const labels = (template.checkpoints || [])
-            .filter((def) => hausCheckpointZoneFromDef(def) === zoneId && hausStoredKeySetHasDef(wanted, def))
+            .filter((def) => checkpointZoneFromDef(def, template) === zoneId && storedKeySetHasDef(wanted, def, template))
             .map((def) => checkpointDefLabelDeSlashEn(def));
           if (!labels.length) return "";
           return `
             <div class="customer-cp-zone-block">
-              <strong>${escapeHtml(hausZoneGroupTitle(zoneId))}</strong>
+              <strong>${escapeHtml(zoneDefLabel(zoneDef))}</strong>
               <ul>${labels.map((lb) => `<li>${escapeHtml(lb)}</li>`).join("")}</ul>
             </div>`;
         }).join("");
@@ -8289,10 +8707,11 @@ function createChecklistFromAssignment(entry, templateIdExplicit) {
   }
   migrateCustomerCheckpointSetsIfNeeded(customer);
   let customerSpecificItems = getCustomerCheckpointsForTemplate(customer, templateIdFromAssignment);
-  if (templateIdFromAssignment === HAUS_CHECKLIST_TEMPLATE_ID) {
-    customerSpecificItems = filterCustomerHausCheckpointsByZones(
+  if (templateUsesZones(templateIdFromAssignment)) {
+    customerSpecificItems = filterCustomerCheckpointsByZones(
       customer,
-      effectiveHausGartenZonesForEntry(target)
+      templateIdFromAssignment,
+      effectiveZonesForEntryAndTemplate(target, templateIdFromAssignment)
     );
   }
   if (!customerSpecificItems.length) {
@@ -8309,8 +8728,8 @@ function createChecklistFromAssignment(entry, templateIdExplicit) {
   }
   el.checklistItems.innerHTML = "";
   const calTmpl = getChecklistTemplateById(templateIdFromAssignment);
-  if (templateIdFromAssignment === HAUS_CHECKLIST_TEMPLATE_ID && calTmpl) {
-    appendHausGroupedChecklistItemRows(el.checklistItems, calTmpl, new Set(customerSpecificItems));
+  if (templateUsesZones(calTmpl)) {
+    appendGroupedChecklistItemRows(el.checklistItems, calTmpl, new Set(customerSpecificItems));
   } else {
     customerSpecificItems.forEach((canon) => {
       const locs = resolveLocalesFromTemplateCanon(templateIdFromAssignment, canon);
@@ -8604,14 +9023,8 @@ function addStaffEntriesMulti(
   if (!validateCustomerHasCheckpointsForTemplateIds(customer, tplIds)) {
     return false;
   }
-  if (tplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID)) {
-    const hz = sanitizeAssignmentHausGartenZoneIds(hausGartenZoneIds);
-    if (!hz.length) {
-      showToast(t("toast.hausZonesRequired"));
-      return false;
-    }
-    if (!validateCustomerHasHausCheckpointsInZones(customer, hz)) return false;
-  }
+  const zoneSelections = normalizeCalendarZoneArg(hausGartenZoneIds, tplIds);
+  if (!validateTemplateZoneSelectionsForCustomer(customer, tplIds, zoneSelections)) return false;
 
   const existingEntries = getScheduleEntriesForDate(selectedCalendarDate);
   const overlaps = selectedEmployees.some((employee) => hasScheduleOverlap(existingEntries, employee.username, fromTime, toTime));
@@ -8623,9 +9036,6 @@ function addStaffEntriesMulti(
   const groupId = createId();
   const list = staffSchedule[selectedCalendarDate] || [];
   const idsSnapshot = tplIds.slice();
-  const hzSnap = tplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID)
-    ? sanitizeAssignmentHausGartenZoneIds(hausGartenZoneIds).slice()
-    : null;
   selectedEmployees.forEach((employee) => {
     const row = {
       id: createId(),
@@ -8644,7 +9054,7 @@ function addStaffEntriesMulti(
       checklistTemplateIds: idsSnapshot,
       checklistTemplateId: idsSnapshot[0]
     };
-    if (hzSnap && hzSnap.length) row.hausGartenZoneIds = hzSnap;
+    applyZoneSelectionsToEntry(row, zoneSelections, idsSnapshot);
     list.push(row);
   });
   staffSchedule[selectedCalendarDate] = list;
@@ -8675,14 +9085,8 @@ function addStaffEntry(employeeUsername, fromTime, toTime, customerId, staffComm
   }
   const tplIds = sanitizeChecklistTemplateIdsArray(rawTpl);
   if (!validateCustomerHasCheckpointsForTemplateIds(customer, tplIds)) return false;
-  if (tplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID)) {
-    const hz = sanitizeAssignmentHausGartenZoneIds(hausGartenZoneIds);
-    if (!hz.length) {
-      showToast(t("toast.hausZonesRequired"));
-      return false;
-    }
-    if (!validateCustomerHasHausCheckpointsInZones(customer, hz)) return false;
-  }
+  const zoneSelections = normalizeCalendarZoneArg(hausGartenZoneIds, tplIds);
+  if (!validateTemplateZoneSelectionsForCustomer(customer, tplIds, zoneSelections)) return false;
 
   const list = staffSchedule[selectedCalendarDate] || [];
   const existingEntries = getScheduleEntriesForDate(selectedCalendarDate);
@@ -8691,7 +9095,7 @@ function addStaffEntry(employeeUsername, fromTime, toTime, customerId, staffComm
     return false;
   }
 
-  list.push(Object.assign({
+  const row = {
     id: createId(),
     checklistOwnerUsername: employee.username,
     employeeUsername: employee.username,
@@ -8706,10 +9110,9 @@ function addStaffEntry(employeeUsername, fromTime, toTime, customerId, staffComm
     staffComment: staffComment || "",
     checklistTemplateIds: tplIds.slice(),
     checklistTemplateId: tplIds[0]
-  }, (() => {
-    const hz = sanitizeAssignmentHausGartenZoneIds(hausGartenZoneIds);
-    return tplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID) && hz.length ? { hausGartenZoneIds: hz.slice() } : {};
-  })()));
+  };
+  applyZoneSelectionsToEntry(row, zoneSelections, tplIds);
+  list.push(row);
   staffSchedule[selectedCalendarDate] = list;
   persistSchedule();
   renderCalendar();
@@ -8861,14 +9264,8 @@ function updateSingleStaffEntry(entryId, employeeUsername, fromTime, toTime, cus
   }
   const tplIds = sanitizeChecklistTemplateIdsArray(rawTpl);
   if (!validateCustomerHasCheckpointsForTemplateIds(customer, tplIds)) return false;
-  if (tplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID)) {
-    const hz = sanitizeAssignmentHausGartenZoneIds(hausGartenZoneIds);
-    if (!hz.length) {
-      showToast(t("toast.hausZonesRequired"));
-      return false;
-    }
-    if (!validateCustomerHasHausCheckpointsInZones(customer, hz)) return false;
-  }
+  const zoneSelections = normalizeCalendarZoneArg(hausGartenZoneIds, tplIds);
+  if (!validateTemplateZoneSelectionsForCustomer(customer, tplIds, zoneSelections)) return false;
   const existingEntries = getScheduleEntriesForDate(selectedCalendarDate).filter((entry) => entry.id !== entryId);
   if (hasScheduleOverlap(existingEntries, employee.username, fromTime, toTime)) {
     showToast(t("toast.overlap"));
@@ -8890,11 +9287,9 @@ function updateSingleStaffEntry(entryId, employeeUsername, fromTime, toTime, cus
     checklistTemplateIds: tplIds.slice(),
     checklistTemplateId: tplIds[0]
   });
-  if (tplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID)) {
-    merged.hausGartenZoneIds = sanitizeAssignmentHausGartenZoneIds(hausGartenZoneIds).slice();
-  } else {
-    delete merged.hausGartenZoneIds;
-  }
+  delete merged.checklistZoneIdsByTemplate;
+  delete merged.hausGartenZoneIds;
+  applyZoneSelectionsToEntry(merged, zoneSelections, tplIds);
   list[index] = merged;
   staffSchedule[selectedCalendarDate] = list;
   persistSchedule();
@@ -8952,7 +9347,7 @@ function startEditSingleStaffEntry(entryId) {
     el.calendarWorkOrderMode.checked = isWorkOrderAssignment(entry);
   }
   renderCalendarChecklistTemplateCheckboxes(normalizeAssignmentTemplateIds(entry));
-  setCalendarHausZoneCheckboxSelection(entry.hausGartenZoneIds);
+  setCalendarHausZoneCheckboxSelection(normalizeEntryZoneMap(entry));
   updateCalendarAssignmentTypeUi();
   updateCalendarWorkOrderModeUi();
   calendarWorkOrderPhotos = isWorkOrderAssignment(entry)
@@ -8964,9 +9359,9 @@ function startEditSingleStaffEntry(entryId) {
   showToast(t("toast.calEditLoad"));
 }
 
-function buildRecurringRulePayload(employee, customer, recurrenceKind, weekdayNumber, anchorIso, monthlyDom, checklistTemplateIds, hausGartenZoneIds) {
+function buildRecurringRulePayload(employee, customer, recurrenceKind, weekdayNumber, anchorIso, monthlyDom, checklistTemplateIds, templateZoneSelections) {
   const ids = sanitizeChecklistTemplateIdsArray(checklistTemplateIds);
-  const hz = sanitizeAssignmentHausGartenZoneIds(hausGartenZoneIds);
+  const zoneSelections = normalizeCalendarZoneArg(templateZoneSelections, ids);
   const base = {
     checklistOwnerUsername: employee.username,
     employeeUsername: employee.username,
@@ -8980,9 +9375,7 @@ function buildRecurringRulePayload(employee, customer, recurrenceKind, weekdayNu
     checklistTemplateIds: ids,
     checklistTemplateId: ids[0]
   };
-  if (ids.includes(HAUS_CHECKLIST_TEMPLATE_ID) && hz.length) {
-    base.hausGartenZoneIds = hz.slice();
-  }
+  applyZoneSelectionsToEntry(base, zoneSelections, ids);
   if (recurrenceKind === "biweekly") {
     const todayIso = toIsoDate(new Date());
     const anchorCandidate = anchorIso || selectedCalendarDate;
@@ -9026,14 +9419,8 @@ function addRecurringStaffRule(
   }
   const tplIds = sanitizeChecklistTemplateIdsArray(rawTpl);
   if (!validateCustomerHasCheckpointsForTemplateIds(customer, tplIds)) return false;
-  if (tplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID)) {
-    const hz = sanitizeAssignmentHausGartenZoneIds(hausGartenZoneIds);
-    if (!hz.length) {
-      showToast(t("toast.hausZonesRequired"));
-      return false;
-    }
-    if (!validateCustomerHasHausCheckpointsInZones(customer, hz)) return false;
-  }
+  const zoneSelections = normalizeCalendarZoneArg(hausGartenZoneIds, tplIds);
+  if (!validateTemplateZoneSelectionsForCustomer(customer, tplIds, zoneSelections)) return false;
 
   let weekdayNumber = Number(weekday);
   let monthlyDom = null;
@@ -9113,14 +9500,8 @@ function updateRecurringStaffRule(
   }
   const tplIds = sanitizeChecklistTemplateIdsArray(rawTpl);
   if (!validateCustomerHasCheckpointsForTemplateIds(customer, tplIds)) return false;
-  if (tplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID)) {
-    const hz = sanitizeAssignmentHausGartenZoneIds(hausGartenZoneIds);
-    if (!hz.length) {
-      showToast(t("toast.hausZonesRequired"));
-      return false;
-    }
-    if (!validateCustomerHasHausCheckpointsInZones(customer, hz)) return false;
-  }
+  const zoneSelections = normalizeCalendarZoneArg(hausGartenZoneIds, tplIds);
+  if (!validateTemplateZoneSelectionsForCustomer(customer, tplIds, zoneSelections)) return false;
 
   const rk = recurrenceKind === "biweekly" || recurrenceKind === "monthly" ? recurrenceKind : "weekly";
   let weekdayNumber = Number(weekday);
@@ -9196,12 +9577,9 @@ function updateRecurringStaffRule(
         checklistTemplateIds: syncedTplIds.slice(),
         checklistTemplateId: syncedTplIds[0]
       });
-      if (syncedTplIds.includes(HAUS_CHECKLIST_TEMPLATE_ID)) {
-        const hz = sanitizeAssignmentHausGartenZoneIds(syncedRule.hausGartenZoneIds);
-        merged.hausGartenZoneIds = hz.length ? hz.slice() : [...HAUS_CHECKPOINT_ZONE_IDS];
-      } else {
-        delete merged.hausGartenZoneIds;
-      }
+      delete merged.checklistZoneIdsByTemplate;
+      delete merged.hausGartenZoneIds;
+      applyZoneSelectionsToEntry(merged, normalizeEntryZoneMap(syncedRule), syncedTplIds);
       return merged;
     });
     staffSchedule[isoDate] = updatedEntries;
@@ -9286,7 +9664,7 @@ function startEditRecurringRule(ruleId) {
   el.calendarStaffComment.value = rule.staffComment || "";
   if (el.calendarWorkOrderMode) el.calendarWorkOrderMode.checked = false;
   renderCalendarChecklistTemplateCheckboxes(normalizeAssignmentTemplateIds(rule));
-  setCalendarHausZoneCheckboxSelection(rule.hausGartenZoneIds);
+  setCalendarHausZoneCheckboxSelection(normalizeEntryZoneMap(rule));
   updateCalendarAssignmentTypeUi();
   updateCalendarWorkOrderModeUi();
   updateCalendarStaffSubmitButtonLabel();
@@ -9448,15 +9826,12 @@ function copySingleStaffEntryToDate(sourceIso, entryId, targetIso) {
       checklistTemplateIds: cIds.slice(),
       checklistTemplateId: cIds[0]
     };
-    if (cIds.includes(HAUS_CHECKLIST_TEMPLATE_ID)) {
-      const hz = sanitizeAssignmentHausGartenZoneIds(item.hausGartenZoneIds);
-      if (hz.length) base.hausGartenZoneIds = hz.slice();
-      else base.hausGartenZoneIds = [...HAUS_CHECKPOINT_ZONE_IDS];
-    }
+    applyZoneSelectionsToEntry(base, normalizeEntryZoneMap(item), cIds);
     if (isWorkOrderAssignment(item)) {
       base.assignmentKind = WORK_ORDER_ASSIGNMENT_KIND;
       base.checklistTemplateIds = [];
       base.checklistTemplateId = "";
+      delete base.checklistZoneIdsByTemplate;
       delete base.hausGartenZoneIds;
       base.workOrderImages = cloneWorkOrderChefImagesForStorage(item.workOrderImages || []);
       base.workOrderResultImages = cloneWorkOrderResultImagesForStorage(item.workOrderResultImages || []);
@@ -9758,8 +10133,15 @@ if (el.checkpointManagerTemplateSelect) {
     persistCheckpointTemplateAccessFromInputs();
     checkpointManagerTemplateId = el.checkpointManagerTemplateSelect.value || HAUS_CHECKLIST_TEMPLATE_ID;
     activeCheckpointEditIndex = -1;
+    resetTemplateZoneForm();
     resetCheckpointForm();
     refreshCheckpointStaffUi();
+  });
+}
+if (el.checkpointZoneForm) {
+  el.checkpointZoneForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveTemplateZone();
   });
 }
 if (el.checkpointCreateTemplateButton) {
@@ -9957,11 +10339,7 @@ el.calendarStaffForm.addEventListener("submit", (event) => {
     return;
   }
 
-  const hausZonesForCalendarSave = getSelectedCalendarHausGartenZones();
-  if (checklistTemplateIds.includes(HAUS_CHECKLIST_TEMPLATE_ID) && !hausZonesForCalendarSave.length) {
-    showToast(t("toast.hausZonesRequired"));
-    return;
-  }
+  const templateZoneSelections = getSelectedCalendarTemplateZoneSelections();
 
   if ((wasEditingRule || wasEditingSingle) && employeeUsernames.length > 1) {
     showToast(t("toast.checklistOwnerInvalid"));
@@ -9982,7 +10360,7 @@ el.calendarStaffForm.addEventListener("submit", (event) => {
         assignType,
         anchorForRule,
         monthlyDayArg,
-        hausZonesForCalendarSave
+        templateZoneSelections
       )
       : addRecurringStaffRule(
         employeeUsername,
@@ -9995,10 +10373,10 @@ el.calendarStaffForm.addEventListener("submit", (event) => {
         assignType,
         anchorForRule,
         monthlyDayArg,
-        hausZonesForCalendarSave
+        templateZoneSelections
       ))
     : (wasEditingSingle
-      ? updateSingleStaffEntry(activeSingleAssignmentId, employeeUsername, fromTime, toTime, customerId, staffComment, checklistTemplateIds, hausZonesForCalendarSave)
+      ? updateSingleStaffEntry(activeSingleAssignmentId, employeeUsername, fromTime, toTime, customerId, staffComment, checklistTemplateIds, templateZoneSelections)
       : addStaffEntriesMulti(
         employeeUsernames,
         checklistOwnerUsername,
@@ -10007,7 +10385,7 @@ el.calendarStaffForm.addEventListener("submit", (event) => {
         customerId,
         staffComment,
         checklistTemplateIds,
-        hausZonesForCalendarSave
+        templateZoneSelections
       ));
   if (created) {
     el.calendarStaffForm.reset();

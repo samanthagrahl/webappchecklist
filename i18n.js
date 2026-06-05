@@ -280,7 +280,7 @@
     "cal.toTimeAria": ["Ende des Einsatzes", "Assignment end"],
     "cal.customerFieldLbl": ["Kunde", "Customer"],
     "cal.chkTplLbl": ["Checkliste", "Checklist"],
-    "cal.hausZonesLbl": ["Bereiche (nur Haus & Garten)", "Areas (Haus & Garten only)"],
+    "cal.hausZonesLbl": ["Bereiche je Checkliste", "Areas per checklist"],
     "cal.hausZonesHint": [
       "Nur Prüfpunkte der gewählten Bereiche erscheinen in der Checkliste des Mitarbeiters.",
       "Only checkpoints in the selected areas appear on the employee checklist."
@@ -413,7 +413,21 @@
     "cp.empty": ["Noch keine Prüfpunkte vorhanden.", "No checkpoints yet."],
     "cp.edit": ["Bearbeiten", "Edit"],
     "cp.delete": ["Löschen", "Delete"],
-    "cp.zoneLbl": ["Bereich (nur Haus & Garten)", "Area (Haus & Garten only)"],
+    "cp.zonesSection": ["Bereiche (optional)", "Areas (optional)"],
+    "cp.zonesHint": [
+      "Bereiche sind optional. Wenn Sie welche anlegen, können Prüfpunkte zugeordnet und im Kalender gefiltert werden.",
+      "Areas are optional. If you add them, checkpoints can be assigned and filtered in the calendar."
+    ],
+    "cp.zonesEmpty": ["Noch keine Bereiche angelegt.", "No areas defined yet."],
+    "cp.zoneNameDePh": ["Name des Bereichs (Deutsch)", "Area name (German)"],
+    "cp.zoneNameEnPh": ["Name des Bereichs (Englisch)", "Area name (English)"],
+    "cp.zoneAdd": ["Bereich hinzufügen", "Add area"],
+    "cp.zoneUpdate": ["Bereich aktualisieren", "Update area"],
+    "cp.zoneDeleteConfirm": [
+      "Bereich „{name}“ wirklich löschen? Verknüpfte Prüfpunkte werden einem anderen Bereich zugeordnet.",
+      "Delete area “{name}”? Linked checkpoints will be moved to another area."
+    ],
+    "cp.zoneLbl": ["Bereich", "Area"],
     "cp.zoneAria": ["Bereich für den Prüfpunkt", "Checkpoint area"],
     "zone.general": ["Allgemein", "General"],
     "zone.pool": ["Pool", "Pool"],
@@ -782,6 +796,14 @@
     "toast.cpTplCreated": ["Checkliste angelegt. Jetzt Prüfpunkte hinzufügen.", "Checklist created. Add checkpoints now."],
     "toast.cpTplDeleted": ["Checkliste gelöscht.", "Checklist deleted."],
     "toast.cpTplMinOne": ["Mindestens eine Checkliste muss bleiben.", "At least one checklist must remain."],
+    "toast.zoneNameRequired": ["Bitte einen Namen für den Bereich eingeben.", "Please enter an area name."],
+    "toast.zoneSaved": ["Bereich gespeichert.", "Area saved."],
+    "toast.zoneDeleted": ["Bereich gelöscht.", "Area deleted."],
+    "toast.zonesRequired": ["Bitte mindestens einen Bereich pro Checkliste mit Bereichen wählen.", "Please select at least one area for each checklist that uses areas."],
+    "toast.cpMissingZones": [
+      "Für die gewählten Bereiche sind beim Kunden keine Prüfpunkte hinterlegt ({name}).",
+      "No checkpoints are configured for the customer in the selected areas ({name})."
+    ],
     "toast.overlap": ["Fehler: Terminüberschneidung für diesen Mitarbeiter.", "Error: schedule overlap for this staff member."],
     "toast.pickWeekday": ["Bitte einen gültigen Wochentag wählen.", "Please choose a valid weekday."],
     "toast.overlapRule": ["Fehler: Terminüberschneidung für diesen Mitarbeiter in der Regel.", "Error: overlap in the recurring rule."],
