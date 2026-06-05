@@ -1911,24 +1911,83 @@ select.boss-status-select {
 
 .checkpoint-manager {
   display: grid;
-  gap: 12px;
+  gap: 16px;
+}
+
+.cp-manager-card {
+  display: grid;
+  gap: 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg);
-  padding: 14px;
+  border-radius: 10px;
+  background: var(--card);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.cp-manager-card-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #f8fafc;
+}
+
+.cp-manager-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #334e68;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.cp-manager-card--zones .cp-manager-step {
+  background: #475569;
+}
+
+.cp-manager-card--checkpoints .cp-manager-step {
+  background: #c2410c;
+}
+
+.cp-manager-card-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.cp-manager-card-lead {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.cp-manager-card-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.checkpoint-subblock-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .checkpoint-template-create {
   display: grid;
   gap: 8px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
-}
-
-.checkpoint-template-create-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--line);
 }
 
 .checkpoint-template-create-row,
@@ -1944,25 +2003,6 @@ select.boss-status-select {
 
 .checkpoint-template-select-row {
   grid-template-columns: 1fr auto;
-}
-
-.checkpoint-zones-block {
-  display: grid;
-  gap: 10px;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-}
-
-.checkpoint-zones-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.checkpoint-zones-hint {
-  margin: 0;
-  font-size: 13px;
 }
 
 .checkpoint-zone-list {
@@ -2153,6 +2193,10 @@ select.boss-status-select {
 
 .checkpoint-form {
   margin: 0;
+  display: grid;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--line);
 }
 
 .checkpoint-form-row {
@@ -3606,6 +3650,9 @@ select.boss-status-select {
   .calendar-form,
   .customer-db-form,
   .checkpoint-form-row,
+  .checkpoint-zone-form,
+  .checkpoint-template-create-row,
+  .checkpoint-template-select-row,
   .boss-search-row {
     grid-template-columns: 1fr;
   }

@@ -391,6 +391,17 @@
     "wt.totalLabel": ["Gesamtzeit:", "Total:"],
     "wt.weekLabel": ["KW {w} · {y}", "CW {w} · {y}"],
     "cp.heading": ["Checkliste und Prüfpunkte", "Checklist & checkpoints"],
+    "cp.stepChecklist": ["Checkliste", "Checklist"],
+    "cp.stepChecklistDesc": [
+      "Neue Checkliste anlegen oder eine bestehende auswählen und freigeben.",
+      "Create a new checklist or select an existing one and manage access."
+    ],
+    "cp.stepZones": ["Bereiche (optional)", "Areas (optional)"],
+    "cp.stepCheckpoints": ["Prüfpunkte", "Checkpoints"],
+    "cp.stepCheckpointsDesc": [
+      "Einzelne Aufgaben für die gewählte Checkliste anlegen und verwalten.",
+      "Create and manage individual tasks for the selected checklist."
+    ],
     "cp.tplSection": ["Neue Checkliste anlegen", "Create new checklist"],
     "cp.tplNamePh": ["Name der Checkliste (z. B. Reinigung Büro)", "Checklist name (e.g. Office cleaning)"],
     "cp.tplCreate": ["Checkliste anlegen", "Create checklist"],
