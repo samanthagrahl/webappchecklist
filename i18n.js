@@ -14,6 +14,10 @@
     "auth.remember": ["Angemeldet bleiben", "Stay signed in"],
     "auth.submit": ["Anmelden", "Sign in"],
     "auth.error": ["Login fehlgeschlagen. Bitte Zugangsdaten prüfen.", "Login failed. Please check your credentials."],
+    "auth.demoTitle": ["Demo-Zugänge", "Demo accounts"],
+    "auth.demoEntry": ["{username} / {password} ({role})", "{username} / {password} ({role})"],
+    "auth.demoRoleBoss": ["Chef", "Manager"],
+    "auth.demoRoleEmployee": ["Mitarbeiter", "Employee"],
     "lang.label": ["Sprache", "Language"],
     "lang.authAria": ["Sprache der Oberfläche", "Interface language"],
     "lang.sidebarAria": ["Sprache der Oberfläche", "Interface language"],
@@ -458,8 +462,8 @@
     "report.mailOpenBtn": ["E-Mail-App öffnen", "Open mail app"],
     "report.subjectPrefix": ["Bericht:", "Report:"],
     "report.emailSubjectLine": [
-      "Kundenbericht – Swiderski Property Management",
-      "Customer report – Swiderski Property Management"
+      "Kundenbericht – Immobiliencheck",
+      "Customer report – Immobiliencheck"
     ],
     "report.pdfPrefix": ["Bericht", "Report"],
     "report.shareText": ["Prüfbericht (PDF) im Anhang.", "Inspection report attached (PDF)."],
@@ -474,20 +478,20 @@
       "You will find detailed information and images about our service in the attachment. If you have any questions or additional requests, we are always happy to help."
     ],
     "report.emailSignature": [
-      "Mit Herz und Hand - Ihre Familie Swiderski",
-      "With heart and hand — Your Swiderski family"
+      "Ihr Team",
+      "Your team"
     ],
     "report.pdfHintAttach": [
       "Das PDF zum Kundenbericht liegt in Ihrem Download-Ordner. Bitte in der E-Mail-App als Anhang einfügen.",
       "The customer report PDF was saved to your downloads folder. Please attach the file in your mail app."
     ],
-    "report.contract.brand": ["SWIDERSKI PROPERTY MANAGEMENT", "SWIDERSKI PROPERTY MANAGEMENT"],
+    "report.contract.brand": ["IMMOBILIENCHECK", "IMMOBILIENCHECK"],
     "report.contract.title": ["DIENSTLEISTUNGSBERICHT", "SERVICE REPORT"],
     "report.contract.providerHead": ["DIENSTLEISTER", "SERVICE PROVIDER"],
     "report.contract.clientHead": ["AUFTRAGGEBER", "CLIENT"],
-    "report.contract.providerName": ["Swiderski Property Management S.L.", "Swiderski Property Management S.L."],
-    "report.contract.providerEmail": ["patrick@swiderskipropertymanagement.com", "patrick@swiderskipropertymanagement.com"],
-    "report.contract.providerPhone": ["+34 601 993 375", "+34 601 993 375"],
+    "report.contract.providerName": ["Ihr Unternehmen", "Your company"],
+    "report.contract.providerEmail": ["", ""],
+    "report.contract.providerPhone": ["", ""],
     "report.contract.performedOn": [
       "Dieser Bericht dokumentiert die ausgeführte Leistung am {date}.",
       "This report documents the service performed on {date}."
@@ -517,7 +521,7 @@
     "preview.cpHeading": ["Prüfpunkte:", "Checkpoints:"],
     "preview.itemComment": [" - Kommentar: {t}", " - Comment: {t}"],
     "preview.bossC": ["Anmerkung zum Check: {t}", "Note on the check: {t}"],
-    "preview.team": ["Mit Herz und Hand - Ihre Familie Swiderski", "With heart and hand — Your Swiderski family"],
+    "preview.team": ["Ihr Team", "Your team"],
     "preview.htmlPoints": ["Prüfpunkte", "Checkpoints"],
     "preview.htmlBossLbl": ["Anmerkung zum Check:", "Note on the check:"],
     "preview.htmlNoComment": ["Kein Kommentar angegeben.", "No comment provided."],

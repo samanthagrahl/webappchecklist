@@ -8,7 +8,7 @@ RUN cd backend && npm install --omit=dev
 COPY backend ./backend
 COPY index.html app.js i18n.js styles.css js ./ 
 COPY vendor ./vendor
-COPY logo-swiderski.png ./
+COPY logo.png ./
 COPY templates ./templates
 
 WORKDIR /app/backend

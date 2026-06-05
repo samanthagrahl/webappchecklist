@@ -1,6 +1,6 @@
 # Eigene Infrastruktur (Hetzner + S3 + getrennte Kunden-Instanzen)
 
-Diese Anleitung beschreibt den Betrieb **auf deinem eigenen Server** — unabhängig vom Swiderski-Server. Jeder Kunde erhält eine **eigene Instanz** mit separater Datenbank, separatem S3-Bucket und eigener Subdomain.
+Diese Anleitung beschreibt den Betrieb **auf deinem eigenen Hetzner-Server**. Jeder Kunde erhält eine **eigene Instanz** mit separater Datenbank, separatem S3-Bucket und eigener Subdomain.
 
 ## Architektur
 

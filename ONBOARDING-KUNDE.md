@@ -231,7 +231,7 @@ Pro Kunden-Instanz kannst du anpassen:
 
 | Datei | Inhalt |
 |-------|--------|
-| `logo-swiderski.png` | Durch Kunden-Logo ersetzen (gleicher Dateiname oder `index.html` anpassen) |
+| `logo.png` | Durch Kunden-Logo ersetzen |
 | `index.html` | Logo-Pfad, Alt-Text |
 | `i18n.js` | Firmenname in PDF/E-Mail-Texten |
 

@@ -101,21 +101,9 @@ const putzplanCheckpointDefaults = [
   "Staub entfernen in allen Bereichen",
   "Müll und Behälter entsorgt, Verbrauchsmaterial ergänzt"
 ];
+/** Nur Offline-Demo ohne Cloud-Backend — Produktion nutzt die API. */
 const DEFAULT_USERS = [
-  { username: "chef", password: "123", role: "boss", label: "Chef" },
-  { username: "patrick_admin", password: "123", role: "boss", label: "Patrick (Admin)" },
-  { username: "patrick", password: "123", role: "employee", label: "Patrick" },
-  { username: "souhail", password: "123", role: "employee", label: "Souhail" },
-  { username: "mohammed", password: "123", role: "employee", label: "Mohammed" },
-  { username: "reinigungspaar", password: "123", role: "employee", label: "Reinigungspaar" },
-  {
-    username: "kristina",
-    password: "123",
-    role: "boss",
-    label: "Kristina",
-    manageEmployeeUsernames: ["reinigungspaar"],
-    allowedChecklistTemplateIds: [PUTZ_CHECKLIST_TEMPLATE_ID]
-  }
+  { username: "chef", password: "123", role: "boss", label: "Chef" }
 ];
 /** Aktives Verzeichnis (Cloud-API oder Offline-Fallback). */
 let users = DEFAULT_USERS.map((u) => Object.assign({}, u));
@@ -1188,6 +1176,8 @@ const el = {
   loginPassword: document.getElementById("loginPassword"),
   loginRemember: document.getElementById("loginRemember"),
   loginError: document.getElementById("loginError"),
+  loginDemoHint: document.getElementById("loginDemoHint"),
+  loginDemoList: document.getElementById("loginDemoList"),
   logoutButton: document.getElementById("logoutButton"),
   sessionUser: document.getElementById("sessionUser"),
   employeeView: document.getElementById("employeeView"),
@@ -10186,6 +10176,9 @@ window.__wcOnLocaleChange = function () {
   refreshChecklistFormItemLabels();
   checkpointFormMarkUiLangBaseline();
   const inApp = el.appShell && !el.appShell.classList.contains("hidden");
+  if (!inApp) {
+    renderLoginDemoHint();
+  }
   if (inApp && currentRole) {
     render();
     refreshWorktimePeriodDisplay();
@@ -10258,10 +10251,31 @@ async function resolveCloudPhotoDisplayUrlsInSubmissions() {
   }
 }
 
+function renderLoginDemoHint() {
+  if (!el.loginDemoHint || !el.loginDemoList) return;
+  const cloud = cloudStore();
+  if (cloud && cloud.enabled) {
+    el.loginDemoHint.classList.add("hidden");
+    el.loginDemoList.innerHTML = "";
+    return;
+  }
+  el.loginDemoList.innerHTML = DEFAULT_USERS.map((user) => {
+    const roleLabel = user.role === "boss" ? t("auth.demoRoleBoss") : t("auth.demoRoleEmployee");
+    const text = t("auth.demoEntry", {
+      username: user.username,
+      password: user.password,
+      role: roleLabel
+    });
+    return `<li>${escapeHtml(text)}</li>`;
+  }).join("");
+  el.loginDemoHint.classList.remove("hidden");
+}
+
 async function bootApp() {
   migrateLegacyBrowserStorageKeys();
   const cloud = cloudStore();
   if (cloud) await cloud.init();
+  renderLoginDemoHint();
   hydrateAppStateFromStorage();
   currentSession = loadSession();
   enrichCurrentSessionFromUsers();

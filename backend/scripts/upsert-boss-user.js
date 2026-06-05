@@ -15,9 +15,9 @@ function normalizeUsername(raw) {
 }
 
 async function main() {
-  const username = normalizeUsername(process.env.ADMIN_USERNAME || "patrick_admin");
+  const username = normalizeUsername(process.env.ADMIN_USERNAME || "chef");
   const password = String(process.env.ADMIN_PASSWORD || "").trim();
-  const label = String(process.env.ADMIN_LABEL || "Patrick (Admin)").trim().slice(0, 80) || "Admin";
+  const label = String(process.env.ADMIN_LABEL || "Chef").trim().slice(0, 80) || "Chef";
 
   if (!username) {
     console.error("[upsert-boss-user] ADMIN_USERNAME ungültig (a–z, 0–9, _, 3–32 Zeichen).");

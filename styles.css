@@ -102,6 +102,39 @@ svg {
   color: var(--muted);
 }
 
+.auth-demo-hint {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #faf8f3;
+  text-align: center;
+}
+
+.auth-demo-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.auth-demo-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.auth-demo-list li {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 .auth-error {
   color: var(--danger);
   font-weight: 700;

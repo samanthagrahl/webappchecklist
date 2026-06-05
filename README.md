@@ -13,28 +13,20 @@ Eine Webapp für Immobilienprüfungen und Handwerksbetriebe:
 
 Zugänge werden im Backend bzw. unter **Mitarbeiter** (voller Chef) verwaltet. Die Anmeldemaske zeigt keine Demo-Zugänge.
 
-## Lokal / Cloud starten
+## Lokal testen (optional)
+
+Für Produktion brauchst du **keine** lokale `.env` — Konfiguration liegt pro Kunde in `customers/<slug>/instance.env` auf dem Server.
+
+Nur wenn du lokal mit Docker entwickeln willst:
 
 ```bash
 cp .env.example .env
-# SMTP_* und DATABASE_URL anpassen
+# DATABASE_URL auf docker-compose anpassen (siehe Kommentar in .env.example)
 npm run docker:up
 docker compose exec api npm run seed
 ```
 
 App: http://localhost:3847
-
-Ohne Docker nur API testen (Entwicklung):
-
-```bash
-cp .env.example .env
-# NODE_ENV=development, DATABASE_URL auf lokale Postgres-Instanz
-npm run migrate
-npm run seed
-npm start
-```
-
-Alle Einstellungen liegen in **`.env`** (Vorlage: **`.env.example`**).
 
 ## Produktion (eigener Hetzner-Server)
 

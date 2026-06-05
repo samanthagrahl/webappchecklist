@@ -21,7 +21,7 @@
   <body>
     <section class="auth-screen" id="authScreen">
       <form class="auth-card" id="loginForm" autocomplete="off">
-        <img class="auth-logo" src="logo-swiderski.png?v=20260522-hd" alt="Swiderski Property Management" width="320" height="320" decoding="async" />
+        <img class="auth-logo" src="logo.png?v=20260522-hd" alt="Immobiliencheck" width="320" height="320" decoding="async" />
         <h1 data-i18n="auth.title">Immobiliencheck Login</h1>
         <label class="auth-lang">
           <span data-i18n="lang.label">Sprache</span>
@@ -41,13 +41,17 @@
         </label>
         <small class="auth-error hidden" id="loginError" aria-live="polite"></small>
         <button class="primary-button" type="submit" data-i18n="auth.submit">Anmelden</button>
+        <div class="auth-demo-hint hidden" id="loginDemoHint">
+          <p class="auth-demo-title" data-i18n="auth.demoTitle">Demo-Zugänge</p>
+          <ul class="auth-demo-list" id="loginDemoList"></ul>
+        </div>
       </form>
     </section>
 
     <div class="app-shell hidden" id="appShell">
       <aside class="sidebar">
         <div class="brand">
-          <img class="brand-logo" src="logo-swiderski.png?v=20260522-hd" alt="Swiderski Property Management" width="96" height="96" decoding="async" />
+          <img class="brand-logo" src="logo.png?v=20260522-hd" alt="Immobiliencheck" width="96" height="96" decoding="async" />
           <div>
             <p data-i18n="sidebar.brandLine1">Immobiliencheck</p>
             <span data-i18n="sidebar.brandLine2">Prüfbericht von Immobilien</span>

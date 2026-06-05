@@ -1,6 +1,6 @@
 # Code-Update: Cursor → Live-Server
 
-Anleitung, wenn am PC in Cursor etwas geändert wurde und es auf **https://app-swiderski.com** live gehen soll.
+Anleitung, wenn am PC in Cursor etwas geändert wurde und es auf dem Hetzner-Server live gehen soll.
 
 ## Ablauf
 
@@ -10,20 +10,18 @@ Cursor (PC)  →  git commit + push  →  GitHub (samanthagrahl/webappchecklist)
 Hetzner       →  git pull  →  ggf. npm install / migrate  →  Dienst neu starten
 ```
 
-**Wichtig:** `.env` und Passwörter **nie** committen. Nur auf dem Server: `/opt/immobiliencheck/.env`.
+**Wichtig:** Secrets **nie** committen. Auf dem Server nur `customers/<slug>/instance.env` (nicht ins Git).
 
 ---
 
 ## 1. Am PC: Änderungen prüfen
 
-PowerShell im Projektordner:
-
 ```powershell
-cd "C:\Users\chris\Documents\Codex\2026-04-24\erstelle-mir-eine-webapp-f-r-2"
+cd "C:\Users\chris\OneDrive\Desktop\Handwerkerapp - Rohbau vor serveranpassung"
 git status
 ```
 
-`.env` darf **nicht** in der Liste der zu committenden Dateien stehen.
+`instance.env` und `platform.config.json` dürfen **nicht** committed werden.
 
 ---
 
@@ -42,10 +40,8 @@ Repository: `https://github.com/samanthagrahl/webappchecklist`
 ## 3. SSH zum Server
 
 ```powershell
-ssh -i "$env:USERPROFILE\.ssh\id_ed25519_hetzner" root@178.105.199.248
+ssh -i "$env:USERPROFILE\.ssh\id_ed25519_hetzner" root@<deine-server-ip>
 ```
-
-(IP ggf. in der Hetzner-Konsole prüfen.)
 
 ---
 
@@ -56,55 +52,46 @@ cd /opt/immobiliencheck
 git pull
 ```
 
-Falls `git pull` ohne Deploy-Key-Konfiguration scheitert:
-
-```bash
-GIT_SSH_COMMAND='ssh -i ~/.ssh/github_immobiliencheck -o IdentitiesOnly=yes' git pull
-```
-
-(Nach einmaligem `git config core.sshCommand "ssh -i ~/.ssh/github_immobiliencheck -o IdentitiesOnly=yes"` im Repo reicht `git pull`.)
-
 ---
 
 ## 5. Nur bei Bedarf
 
 | Geändert | Zusätzlich |
 |----------|------------|
-| `backend/package.json` | `cd /opt/immobiliencheck/backend && npm install --omit=dev` |
-| `backend/db/schema.sql` | `cd /opt/immobiliencheck/backend && npm run migrate` |
-| Nur Frontend (`app.js`, `index.html`, `i18n.js`, `styles.css`, `js/`) | meist nichts |
+| `backend/package.json` | `cd backend && npm install --omit=dev` |
+| `backend/db/schema.sql` | `CUSTOMER_SLUG=kunde-a npm run migrate` (pro Instanz) |
+| Nur Frontend (`app.js`, `index.html`, `i18n.js`, …) | meist nichts |
 
-`npm run seed` nur bei bewusstem Anlegen/Aktualisieren der Demo-Nutzer — nicht bei jedem Update.
+`npm run seed` nur für lokale Entwicklung — Produktion: `upsert-boss-user`.
 
 ---
 
-## 6. App neu starten (fast immer)
+## 6. App neu starten
 
 ```bash
-systemctl restart immobiliencheck
-systemctl status immobiliencheck --no-pager
+systemctl restart immobiliencheck-kunde-a
+systemctl status immobiliencheck-kunde-a --no-pager
 curl -s http://127.0.0.1:3847/api/v1/health
 ```
 
-Erwartung: `active (running)` und `"ok":true`.
+Weitere Kunden: `immobiliencheck-kunde-b`, …
 
 ---
 
 ## 7. Im Browser testen
 
-- https://app-swiderski.com
-- **Strg+F5** (Cache leeren)
+- `https://kunde-a.deine-domain.de` (Strg+F5)
 - Geänderte Funktion prüfen
 
 ---
 
-## `.env` ändern (SMTP, S3, Secrets)
+## Secrets ändern (SMTP, S3, JWT)
 
-Nicht pushen. Nur auf dem Server:
+Nur auf dem Server:
 
 ```bash
-nano /opt/immobiliencheck/.env
-systemctl restart immobiliencheck
+nano /opt/immobiliencheck/customers/kunde-a/instance.env
+systemctl restart immobiliencheck-kunde-a
 ```
 
 ---
@@ -112,7 +99,7 @@ systemctl restart immobiliencheck
 ## Fehler suchen
 
 ```bash
-journalctl -u immobiliencheck -n 50 --no-pager
+journalctl -u immobiliencheck-kunde-a -n 50 --no-pager
 ```
 
 ---
@@ -122,17 +109,8 @@ journalctl -u immobiliencheck -n 50 --no-pager
 1. PC: `git add` → `commit` → `push`
 2. SSH zum Server
 3. `cd /opt/immobiliencheck && git pull`
-4. ggf. `npm install` / `npm run migrate`
-5. `systemctl restart immobiliencheck`
-6. Browser: https://app-swiderski.com + Strg+F5
+4. ggf. `npm install` / `CUSTOMER_SLUG=... npm run migrate`
+5. `systemctl restart immobiliencheck-<slug>`
+6. Browser testen
 
----
-
-## Nicht bei jedem Update nötig
-
-- Certbot (einmal eingerichtet, verlängert automatisch)
-- PostgreSQL neu anlegen
-- DNS bei IONOS ändern
-- Deploy-Key neu anlegen
-
-Erstinstallation: siehe [DEPLOY-HETZNER.md](DEPLOY-HETZNER.md).
+Erstinstallation: [`INFRASTRUKTUR.md`](INFRASTRUKTUR.md) und [`ONBOARDING-KUNDE.md`](ONBOARDING-KUNDE.md).

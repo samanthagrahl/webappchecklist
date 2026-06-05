@@ -3,28 +3,9 @@
 const bcrypt = require("bcryptjs");
 const { getPool } = require("./pool");
 
+/** Nur für lokale Entwicklung — Produktion: upsert-boss-user pro Kunden-Instanz. */
 const DEFAULT_USERS = [
-  { username: "chef", password: "123", role: "boss", label: "Chef", manage: [], templates: [] },
-  {
-    username: "patrick_admin",
-    password: "CHANGE_ME",
-    role: "boss",
-    label: "Patrick (Admin)",
-    manage: [],
-    templates: []
-  },
-  { username: "patrick", password: "123", role: "employee", label: "Patrick", manage: [], templates: [] },
-  { username: "souhail", password: "123", role: "employee", label: "Souhail", manage: [], templates: [] },
-  { username: "mohammed", password: "123", role: "employee", label: "Mohammed", manage: [], templates: [] },
-  { username: "reinigungspaar", password: "123", role: "employee", label: "Reinigungspaar", manage: [], templates: [] },
-  {
-    username: "kristina",
-    password: "123",
-    role: "boss",
-    label: "Kristina",
-    manage: ["reinigungspaar"],
-    templates: ["putzplan_haus"]
-  }
+  { username: "chef", password: "123", role: "boss", label: "Chef", manage: [], templates: [] }
 ];
 
 async function upsertUser(client, user, rounds) {
