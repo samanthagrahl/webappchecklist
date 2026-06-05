@@ -1,28 +1,32 @@
 :root {
   color-scheme: light;
   /* Markenpalette */
-  --anthracite: #1f2933;
+  --bg: #f5f7fa;
+  --sidebar-bg: #1f2933;
+  --sidebar-active: #334e68;
+  --panel: #ffffff;
+  --ink: #111827;
+  --line: #d1d5db;
+  --muted: #6b7280;
   --work-blue: #334e68;
   --work-blue-dark: #243b53;
-  --accent: #f97316;
-  --accent-dark: #c2410c;
-  --bg: #f5f7fa;
-  --panel: #ffffff;
+  --primary: #c2410c;
+  --primary-dark: #9a3412;
   --ok: #2e7d32;
   --danger: #c62828;
-  /* Semantik */
-  --ink: var(--anthracite);
-  --muted: #627d98;
-  --line: #cbd2d9;
-  --primary: var(--accent);
-  --primary-dark: var(--accent-dark);
-  --secondary: var(--work-blue);
-  --secondary-dark: var(--work-blue-dark);
-  --surface-tint: rgba(51, 78, 104, 0.08);
-  --surface-tint-strong: rgba(51, 78, 104, 0.14);
-  --accent-tint: rgba(249, 115, 22, 0.12);
-  --focus-ring: rgba(249, 115, 22, 0.28);
-  --shadow: 0 18px 45px rgba(31, 41, 51, 0.12);
+  /* Sidebar */
+  --sidebar-text: #e5e7eb;
+  --sidebar-muted: #9ca3af;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-surface: rgba(255, 255, 255, 0.05);
+  /* Flächen */
+  --surface-tint: rgba(51, 78, 104, 0.06);
+  --surface-tint-strong: rgba(51, 78, 104, 0.1);
+  --accent-tint: rgba(194, 65, 12, 0.1);
+  --focus-ring: rgba(51, 78, 104, 0.32);
+  --shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+  --panel-shadow: 0 1px 2px rgba(17, 24, 39, 0.05), 0 4px 12px rgba(17, 24, 39, 0.04);
+  --radius: 6px;
 }
 
 * {
@@ -33,10 +37,7 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  background:
-    linear-gradient(135deg, rgba(51, 78, 104, 0.07), transparent 32%),
-    linear-gradient(315deg, rgba(31, 41, 51, 0.05), transparent 30%),
-    var(--bg);
+  background: var(--bg);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -83,10 +84,10 @@ svg {
   display: grid;
   gap: 14px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius);
   padding: 24px;
   background: var(--panel);
-  box-shadow: var(--shadow);
+  box-shadow: var(--panel-shadow);
 }
 
 .auth-logo {
@@ -143,7 +144,7 @@ svg {
 .auth-demo-list li {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -173,10 +174,11 @@ svg {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 28px;
-  background: var(--panel);
-  color: var(--ink);
-  border-right: 1px solid var(--line);
+  padding: 24px 20px;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  border-right: 1px solid #111827;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
 .brand {
@@ -190,8 +192,8 @@ svg {
   width: 46px;
   height: 46px;
   place-items: center;
-  border-radius: 8px;
-  background: var(--secondary);
+  border-radius: var(--radius);
+  background: var(--sidebar-active);
   color: #ffffff;
 }
 
@@ -201,9 +203,9 @@ svg {
   max-height: 96px;
   flex-shrink: 0;
   object-fit: contain;
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: #ffffff;
-  border: 1px solid rgba(51, 78, 104, 0.22);
+  border: 1px solid var(--sidebar-border);
 }
 
 .brand p,
@@ -216,12 +218,13 @@ svg {
 .brand p {
   font-size: 18px;
   font-weight: 800;
+  color: #ffffff;
 }
 
 .brand span {
   display: block;
   margin-top: 3px;
-  color: var(--muted);
+  color: var(--sidebar-muted);
   font-size: 13px;
   line-height: 1.35;
 }
@@ -241,6 +244,16 @@ svg {
   font-weight: 700;
 }
 
+.sidebar .session-lang-field {
+  color: var(--sidebar-muted);
+}
+
+.sidebar .session-lang-field select {
+  background: var(--sidebar-surface);
+  border: 1px solid var(--sidebar-border);
+  color: var(--sidebar-text);
+}
+
 .auth-lang select,
 .session-lang-field select {
   max-width: 100%;
@@ -250,9 +263,9 @@ svg {
   display: grid;
   gap: 10px;
   padding: 14px;
-  border: 1px solid rgba(51, 78, 104, 0.22);
-  border-radius: 8px;
-  background: var(--surface-tint);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  background: var(--sidebar-surface);
 }
 
 .session-card p,
@@ -261,19 +274,25 @@ svg {
 }
 
 .session-card p {
-  color: var(--muted);
+  color: var(--sidebar-muted);
   font-size: 13px;
 }
 
 .session-card strong {
   font-size: 16px;
+  color: #ffffff;
 }
 
 .session-card .secondary-button {
   justify-self: start;
-  border-color: rgba(51, 78, 104, 0.3);
-  background: var(--panel);
-  color: var(--secondary);
+  border-color: var(--sidebar-border);
+  background: transparent;
+  color: var(--sidebar-text);
+}
+
+.session-card .secondary-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .module-tabs {
@@ -286,19 +305,26 @@ svg {
   justify-content: flex-start;
   align-items: center;
   width: 100%;
-  min-height: 40px;
+  min-height: 42px;
   padding: 0 12px;
-  border: 1px solid rgba(51, 78, 104, 0.22);
-  border-radius: 8px;
-  background: var(--panel);
-  color: var(--ink);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  background: var(--sidebar-surface);
+  color: var(--sidebar-text);
   font-weight: 700;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.module-tab:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .module-tab.active {
-  border-color: var(--secondary);
-  background: var(--surface-tint-strong);
-  color: var(--secondary-dark);
+  border-color: var(--sidebar-active);
+  background: var(--sidebar-active);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .role-button {
@@ -315,8 +341,8 @@ svg {
 }
 
 .role-button.active {
-  border-color: rgba(249, 115, 22, 0.55);
-  background: var(--accent-tint);
+  border-color: var(--sidebar-active);
+  background: var(--sidebar-active);
   color: #ffffff;
 }
 
@@ -328,24 +354,26 @@ svg {
 
 .stats div {
   padding: 14px;
-  border: 1px solid rgba(51, 78, 104, 0.2);
-  border-radius: 8px;
-  background: var(--surface-tint);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius);
+  background: var(--sidebar-surface);
 }
 
 .stats span {
   font-size: 28px;
   font-weight: 800;
+  color: #ffffff;
 }
 
 .stats p {
-  color: var(--muted);
+  color: var(--sidebar-muted);
   font-size: 13px;
 }
 
 .workspace {
   min-width: 0;
-  padding: 30px;
+  padding: 24px 28px 32px;
+  background: var(--bg);
 }
 
 .topbar {
@@ -357,10 +385,10 @@ svg {
 }
 
 .eyebrow {
-  color: var(--primary);
-  font-size: 13px;
+  color: var(--work-blue);
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -375,6 +403,8 @@ h1 {
   margin: 4px 0 0;
   font-size: clamp(28px, 4vw, 42px);
   line-height: 1.05;
+  color: var(--ink);
+  font-weight: 800;
 }
 
 h2 {
@@ -390,11 +420,11 @@ h2 {
   min-height: 34px;
   padding: 7px 11px;
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--panel);
   color: var(--muted);
-  box-shadow: 0 6px 20px rgba(31, 45, 61, 0.08);
+  box-shadow: none;
   white-space: nowrap;
-  border: 1px solid rgba(51, 78, 104, 0.2);
+  border: 1px solid var(--line);
 }
 
 .dot {
@@ -439,9 +469,9 @@ h2 {
 .list-panel,
 .review-panel {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--panel);
-  box-shadow: var(--shadow);
+  box-shadow: var(--panel-shadow);
 }
 
 .checklist-panel {
@@ -646,7 +676,7 @@ h2 {
 
 .correction-banner-warning {
   background: var(--accent-tint);
-  border: 1px solid rgba(249, 115, 22, 0.28);
+  border: 1px solid rgba(51, 78, 104, 0.28);
   color: var(--ink);
 }
 
@@ -805,7 +835,7 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: 3px solid rgba(51, 78, 104, 0.18);
-  border-color: var(--primary);
+  border-color: var(--work-blue);
 }
 
 .section-heading {
@@ -863,7 +893,7 @@ select:focus {
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
-  accent-color: var(--primary);
+  accent-color: var(--work-blue);
 }
 
 .checkbox-line span {
@@ -1048,7 +1078,7 @@ select:focus {
   border: 1px dashed rgba(51, 78, 104, 0.42);
   border-radius: 8px;
   background: var(--bg);
-  color: var(--accent);
+  color: var(--work-blue);
   text-align: center;
 }
 
@@ -1115,7 +1145,7 @@ select:focus {
   align-items: center;
   justify-content: center;
   min-height: 42px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-weight: 800;
 }
 
@@ -1124,19 +1154,28 @@ select:focus {
   padding: 0 18px;
   background: var(--primary);
   color: #ffffff;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.12);
 }
 
 .primary-button:hover {
   background: var(--primary-dark);
+  border-color: var(--primary-dark);
 }
 
 .secondary-button,
 .text-button {
   border: 1px solid var(--line);
   padding: 0 16px;
-  background: #ffffff;
+  background: var(--panel);
   color: var(--ink);
   text-decoration: none;
+  border-radius: var(--radius);
+}
+
+.secondary-button:hover,
+.text-button:hover {
+  background: var(--bg);
+  border-color: #9ca3af;
 }
 
 .danger-button {
@@ -1171,10 +1210,10 @@ select:focus {
 
 .boss-filter-panel {
   padding: 13px 14px 14px;
-  border: 1px solid rgba(51, 78, 104, 0.28);
-  border-radius: 10px;
-  background: linear-gradient(165deg, var(--panel) 0%, var(--bg) 52%, var(--panel) 100%);
-  box-shadow: 0 1px 4px rgba(31, 45, 61, 0.07);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
 }
 
 .boss-toolbar-filters {
@@ -1215,16 +1254,16 @@ select.boss-status-select {
   color: var(--ink);
   background: #ffffff;
   border-radius: 8px;
-  border: 1px solid rgba(221, 210, 185, 0.95);
+  border: 1px solid var(--line);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 input.boss-filter-control:focus,
 select.boss-filter-control:focus,
 select.boss-status-select:focus {
-  border-color: var(--primary);
+  border-color: var(--work-blue);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 3px var(--focus-ring), inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .boss-filter-panel select.boss-status-select {
@@ -1278,14 +1317,14 @@ select.boss-status-select {
   width: 100%;
   padding: 14px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #ffffff;
+  border-radius: var(--radius);
+  background: var(--panel);
   text-align: left;
 }
 
 .submission-card.active {
-  border-color: rgba(249, 115, 22, 0.5);
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.14);
+  border-color: var(--work-blue);
+  box-shadow: 0 0 0 2px rgba(51, 78, 104, 0.18);
 }
 
 .submission-card strong {
@@ -1367,7 +1406,7 @@ select.boss-status-select {
 .empty-state svg {
   width: 48px;
   height: 48px;
-  color: var(--primary);
+  color: var(--work-blue);
 }
 
 .review-header {
@@ -1492,7 +1531,7 @@ select.boss-status-select {
 }
 
 .report-preview--collapsible > .report-preview-summary:focus-visible {
-  outline: 2px solid rgba(249, 115, 22, 0.45);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -1572,7 +1611,7 @@ select.boss-status-select {
   text-align: center;
   letter-spacing: 0.42em;
   font-weight: 800;
-  color: var(--accent);
+  color: var(--work-blue);
   margin-bottom: 2px;
 }
 
@@ -1599,7 +1638,7 @@ select.boss-status-select {
   margin: 0 0 6px;
   font-size: 11px;
   letter-spacing: 0.26em;
-  color: var(--accent);
+  color: var(--work-blue);
 }
 
 .contract-report-party p {
@@ -1990,7 +2029,7 @@ select.boss-status-select {
 .calendar-template-check input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
-  accent-color: var(--accent);
+  accent-color: var(--work-blue);
   flex-shrink: 0;
 }
 
@@ -2022,7 +2061,7 @@ select.boss-status-select {
 .calendar-haus-zone-check input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
-  accent-color: var(--accent);
+  accent-color: var(--work-blue);
   flex-shrink: 0;
 }
 
@@ -2756,7 +2795,7 @@ select.boss-status-select {
   height: 16px;
   margin: 2px 0 0;
   flex-shrink: 0;
-  accent-color: var(--primary);
+  accent-color: var(--work-blue);
 }
 
 .customer-checkpoint-options > label span {
@@ -2785,7 +2824,7 @@ select.boss-status-select {
   height: 16px;
   margin: 2px 0 0;
   flex-shrink: 0;
-  accent-color: var(--primary);
+  accent-color: var(--work-blue);
 }
 
 .customer-checkpoint-zone-items label span {
@@ -2999,7 +3038,7 @@ select.boss-status-select {
 }
 
 .customer-history-open-btn:focus-visible {
-  outline: 2px solid rgba(249, 115, 22, 0.55);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -3048,7 +3087,7 @@ select.boss-status-select {
 }
 
 .calendar-cell.active {
-  border-color: var(--primary);
+  border-color: var(--work-blue);
   box-shadow: 0 0 0 2px rgba(51, 78, 104, 0.16);
 }
 
@@ -3064,7 +3103,7 @@ select.boss-status-select {
 }
 
 .calendar-load-indicator.medium {
-  color: var(--accent);
+  color: var(--work-blue);
 }
 
 .calendar-load-indicator.high {
@@ -3186,7 +3225,7 @@ select.boss-status-select {
 .calendar-employee-check input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
-  accent-color: var(--accent);
+  accent-color: var(--work-blue);
   flex-shrink: 0;
 }
 
@@ -3245,7 +3284,7 @@ select.boss-status-select {
 
 .calendar-control:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--work-blue);
   box-shadow: 0 0 0 2px rgba(51, 78, 104, 0.16);
 }
 
@@ -3430,9 +3469,10 @@ select.boss-status-select {
   z-index: 20;
   max-width: min(420px, calc(100vw - 32px));
   padding: 14px 16px;
-  border-radius: 8px;
-  background: #2d2a24;
-  color: #f6eee0;
+  border-radius: var(--radius);
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  border: 1px solid var(--sidebar-active);
   box-shadow: var(--shadow);
 }
 
