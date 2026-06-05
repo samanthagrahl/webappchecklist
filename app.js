@@ -457,33 +457,35 @@ function collectCustomerWorkTimeMonthKeys(customerId, allRecords) {
  */
 function normalizeCheckpointDef(raw, opts) {
   const explicit = Boolean(opts && opts.explicit);
-  if (raw == null) return { de: "", en: "" };
+  if (raw == null) return { de: "", en: "", es: "" };
   if (typeof raw === "string") {
     const s = raw.trim();
-    return { de: s, en: s };
+    return { de: s, en: s, es: s };
   }
   if (typeof raw === "object") {
     const de = String(raw.de != null ? raw.de : "").trim();
     const en = String(raw.en != null ? raw.en : "").trim();
+    const es = String(raw.es != null ? raw.es : "").trim();
     const legacy = String(raw.text != null ? raw.text : "").trim();
     if (explicit) {
-      if (de || en) return { de, en };
+      if (de || en || es) return { de, en, es };
       const base = legacy;
-      return { de: base, en: base };
+      return { de: base, en: base, es: base };
     }
-    const base = de || en || legacy;
+    const base = de || en || es || legacy;
     return {
       de: de || base,
-      en: en || base
+      en: en || base,
+      es: es || base
     };
   }
-  return { de: "", en: "" };
+  return { de: "", en: "", es: "" };
 }
 
 function checkpointCanonical(raw) {
   if (typeof raw === "string") return raw.trim();
   const n = normalizeCheckpointDef(raw, { explicit: true });
-  return n.de || n.en || "";
+  return n.de || n.en || n.es || "";
 }
 
 function checkpointLabelForDef(raw) {
@@ -491,18 +493,17 @@ function checkpointLabelForDef(raw) {
     ? normalizeCheckpointDef(raw)
     : normalizeCheckpointDef(raw, { explicit: true });
   const lang = intlLangSafe();
-  return lang === "en" ? (n.en || n.de) : (n.de || n.en);
+  if (lang === "en") return n.en || n.de || n.es;
+  if (lang === "es") return n.es || n.en || n.de;
+  return n.de || n.en || n.es;
 }
 
-/** Übersichtslisten im Chefbereich: „Deutsch / Englisch“ (nur Deutsch/Englisch einzeln wenn jeweils der andere Teil fehlt). */
+/** Übersichtslisten im Chefbereich: alle Sprachvarianten (ohne Duplikate). */
 function checkpointDefLabelDeSlashEn(raw) {
   const n = normalizeCheckpointDef(raw, { explicit: true });
-  const d = n.de.trim();
-  const e = n.en.trim();
-  if (d && e) {
-    return d === e ? d : `${d} / ${e}`;
-  }
-  return d || e || checkpointCanonical(raw) || "";
+  const parts = [n.de.trim(), n.en.trim(), n.es.trim()].filter(Boolean);
+  const unique = [...new Set(parts)];
+  return unique.join(" / ") || checkpointCanonical(raw) || "";
 }
 
 function isHausCheckpointZoneId(z) {
@@ -558,7 +559,7 @@ function normalizeTemplateCheckpointRow(item, templateId, templateZones) {
   const usesZones = zones.length > 0;
   if (typeof item === "string") {
     const loc = normalizeCheckpointDef(item);
-    if (!(loc.de || loc.en)) return null;
+    if (!(loc.de || loc.en || loc.es)) return null;
     if (!usesZones) return loc;
     const zone = tid === HAUS_CHECKLIST_TEMPLATE_ID
       ? inferHausZoneFromCheckpointLocales(loc)
@@ -567,7 +568,7 @@ function normalizeTemplateCheckpointRow(item, templateId, templateZones) {
     return Object.assign({}, loc, { zone: safeZone });
   }
   const loc = normalizeCheckpointDef(item, { explicit: true });
-  if (!(loc.de || loc.en)) return null;
+  if (!(loc.de || loc.en || loc.es)) return null;
   if (!usesZones) return loc;
   let zone = item && typeof item === "object" && !Array.isArray(item) ? String(item.zone || "").trim() : "";
   if (!isZoneIdForTemplate({ zones }, zone)) {
@@ -600,19 +601,20 @@ function ensureHausGartenCheckpointZonesPersisted(normalizedTemplates, rawTempla
 }
 
 const DEFAULT_BUILT_IN_ZONE_NAMES = {
-  general: ["Allgemein", "General"],
-  pool: ["Pool", "Pool"],
-  zone_1: ["Zone 1", "Zone 1"],
-  zone_2: ["Zone 2", "Zone 2"],
-  zone_3: ["Zone 3", "Zone 3"],
-  zone_4: ["Zone 4", "Zone 4"]
+  general: ["Allgemein", "General", "General"],
+  pool: ["Pool", "Pool", "Piscina"],
+  zone_1: ["Zone 1", "Zone 1", "Zona 1"],
+  zone_2: ["Zone 2", "Zone 2", "Zona 2"],
+  zone_3: ["Zone 3", "Zone 3", "Zona 3"],
+  zone_4: ["Zone 4", "Zone 4", "Zona 4"]
 };
 
 function buildDefaultHausGartenZoneDefs() {
   return HAUS_CHECKPOINT_ZONE_IDS.map((id) => ({
     id,
     nameDe: DEFAULT_BUILT_IN_ZONE_NAMES[id][0],
-    nameEn: DEFAULT_BUILT_IN_ZONE_NAMES[id][1]
+    nameEn: DEFAULT_BUILT_IN_ZONE_NAMES[id][1],
+    nameEs: DEFAULT_BUILT_IN_ZONE_NAMES[id][2]
   }));
 }
 
@@ -621,8 +623,15 @@ function normalizeTemplateZoneDef(raw) {
   const id = String(raw.id || "").trim();
   const nameDe = String(raw.nameDe || raw.name || "").trim();
   const nameEn = String(raw.nameEn || "").trim();
+  const nameEs = String(raw.nameEs || "").trim();
   if (!id) return null;
-  return { id, nameDe: nameDe || id, nameEn: nameEn || nameDe || id };
+  const fallback = nameDe || nameEn || nameEs || id;
+  return {
+    id,
+    nameDe: nameDe || fallback,
+    nameEn: nameEn || fallback,
+    nameEs: nameEs || fallback
+  };
 }
 
 function normalizeTemplateZones(rawZones, templateId) {
@@ -665,7 +674,8 @@ function zoneDefLabel(zoneDef) {
   if (!zoneDef) return "";
   const lang = intlLangSafe();
   if (lang === "en" && zoneDef.nameEn) return zoneDef.nameEn;
-  return zoneDef.nameDe || zoneDef.nameEn || zoneDef.id;
+  if (lang === "es" && zoneDef.nameEs) return zoneDef.nameEs;
+  return zoneDef.nameDe || zoneDef.nameEn || zoneDef.nameEs || zoneDef.id;
 }
 
 function zoneGroupTitleForTemplate(template, zoneId) {
@@ -1015,7 +1025,7 @@ function itemDisplayForSubmissionItem(subItem, templateId) {
 }
 
 function parseLocalesArg(first) {
-  if (first && typeof first === "object" && !Array.isArray(first) && (first.de != null || first.en != null)) {
+  if (first && typeof first === "object" && !Array.isArray(first) && (first.de != null || first.en != null || first.es != null)) {
     return normalizeCheckpointDef(first, { explicit: true });
   }
   return normalizeCheckpointDef(first);
@@ -1055,17 +1065,19 @@ function getActiveChecklistFormTemplateIdFromUi() {
 function mergeStoredCheckpointLocales(canonRaw, localesOrNull, templateId) {
   const tid = templateId || HAUS_CHECKLIST_TEMPLATE_ID;
   const canon = String(canonRaw || "").trim();
-  const tpl = canon ? resolveLocalesFromTemplateCanon(tid, canon) : { de: "", en: "" };
+  const tpl = canon ? resolveLocalesFromTemplateCanon(tid, canon) : { de: "", en: "", es: "" };
   const curRaw = localesOrNull && typeof localesOrNull === "object"
     ? normalizeCheckpointDef(localesOrNull, { explicit: true })
-    : { de: "", en: "" };
+    : { de: "", en: "", es: "" };
   const dRaw = curRaw.de.trim();
   const eRaw = curRaw.en.trim();
+  const sRaw = curRaw.es.trim();
   const mirroredLegacy = Boolean(dRaw && eRaw && dRaw === eRaw);
   const curEnEffective = mirroredLegacy ? "" : eRaw;
   return normalizeCheckpointDef({
     de: dRaw || tpl.de.trim(),
-    en: curEnEffective || tpl.en.trim()
+    en: curEnEffective || tpl.en.trim(),
+    es: sRaw || (tpl.es || "").trim()
   }, { explicit: true });
 }
 
@@ -1083,7 +1095,7 @@ function checkpointFormMarkUiLangBaseline() {
 
 /** Schreibt den aktuellen Spantext in das angegebene Sprachfeld von _itemLocales (nach Merge mit Vorlage). */
 function syncCheckpointItemLocalesIntoLangSlot(lang) {
-  if (!el.checklistItems || (lang !== "de" && lang !== "en")) return;
+  if (!el.checklistItems || (lang !== "de" && lang !== "en" && lang !== "es")) return;
   [...el.checklistItems.querySelectorAll(".check-item")].forEach((row) => {
     const span = row.querySelector(".checkbox-line span");
     if (!span) return;
@@ -1115,7 +1127,7 @@ function normalizeChecklistTemplatesFromStorage(parsed) {
     const checkpoints = Array.isArray(raw.checkpoints)
       ? raw.checkpoints
           .map((item) => normalizeTemplateCheckpointRow(item, tplId, zones))
-          .filter((pair) => pair && (pair.de || pair.en))
+          .filter((pair) => pair && (pair.de || pair.en || pair.es))
       : [];
     const assigned = Array.isArray(raw.assignedEmployeeUsernames)
       ? raw.assignedEmployeeUsernames.filter((item) => typeof item === "string" && item.trim())
@@ -1680,6 +1692,7 @@ const el = {
   guideDbList: document.getElementById("guideDbList"),
   guideNameDe: document.getElementById("guideNameDe"),
   guideNameEn: document.getElementById("guideNameEn"),
+  guideNameEs: document.getElementById("guideNameEs"),
   guidePdfDe: document.getElementById("guidePdfDe"),
   guidePdfEn: document.getElementById("guidePdfEn"),
   guidePdfEs: document.getElementById("guidePdfEs"),
@@ -1730,6 +1743,7 @@ const el = {
   checkpointForm: document.getElementById("checkpointForm"),
   checkpointNameDe: document.getElementById("checkpointNameDe"),
   checkpointNameEn: document.getElementById("checkpointNameEn"),
+  checkpointNameEs: document.getElementById("checkpointNameEs"),
   checkpointHausZone: document.getElementById("checkpointHausZone"),
   checkpointHausZoneRow: document.getElementById("checkpointHausZoneRow"),
   checkpointSaveButton: document.getElementById("checkpointSaveButton"),
@@ -1742,6 +1756,7 @@ const el = {
   checkpointZoneForm: document.getElementById("checkpointZoneForm"),
   checkpointZoneNameDe: document.getElementById("checkpointZoneNameDe"),
   checkpointZoneNameEn: document.getElementById("checkpointZoneNameEn"),
+  checkpointZoneNameEs: document.getElementById("checkpointZoneNameEs"),
   checkpointZoneSaveButton: document.getElementById("checkpointZoneSaveButton"),
   checkpointEmployeeAccess: document.getElementById("checkpointEmployeeAccess"),
   checkpointAccessAllEmployees: document.getElementById("checkpointAccessAllEmployees"),
@@ -2528,6 +2543,7 @@ function sanitizeGuideEntry(raw) {
     id: typeof o.id === "string" && o.id.trim() ? o.id.trim() : createId(),
     nameDe: String(o.nameDe || "").trim().slice(0, 120),
     nameEn: String(o.nameEn || "").trim().slice(0, 120),
+    nameEs: String(o.nameEs || "").trim().slice(0, 120),
     pdfs: sanitizeGuidePdfs(o.pdfs)
   };
 }
@@ -2539,13 +2555,14 @@ function guideHasAnyPdf(pdfs) {
 
 function getGuideDisplayName(entry) {
   const e = entry && typeof entry === "object" ? entry : {};
-  if (WC && WC.getLocale() === "en") {
-    const en = String(e.nameEn || "").trim();
-    if (en) return en;
+  const lang = WC ? WC.getLocale() : "de";
+  if (lang === "en") {
+    return String(e.nameEn || "").trim() || String(e.nameDe || "").trim() || "—";
   }
-  const de = String(e.nameDe || "").trim();
-  if (de) return de;
-  return String(e.nameEn || "").trim() || "—";
+  if (lang === "es") {
+    return String(e.nameEs || "").trim() || String(e.nameEn || "").trim() || String(e.nameDe || "").trim() || "—";
+  }
+  return String(e.nameDe || "").trim() || String(e.nameEn || "").trim() || "—";
 }
 
 function compareGuidesForDisplay(a, b) {
@@ -2989,7 +3006,11 @@ function renderGuideDb() {
 
   el.guideDbList.innerHTML = getGuideDbEntriesForDisplay().map((entry) => {
     const title = getGuideDisplayName(entry);
-    const namesSub = t("guide.namesSub", { de: entry.nameDe || "—", en: entry.nameEn || "—" });
+    const namesSub = t("guide.namesSub", {
+      de: entry.nameDe || "—",
+      en: entry.nameEn || "—",
+      es: entry.nameEs || "—"
+    });
     return `
       <article class="guide-db-item" data-guide-id="${escapeHtml(entry.id)}">
         <div class="guide-db-item-head">
@@ -3016,11 +3037,12 @@ function renderGuideDb() {
   });
 }
 
-function addGuideEntry(nameDe, nameEn, pdfs) {
+function addGuideEntry(nameDe, nameEn, nameEs, pdfs) {
   const record = sanitizeGuideEntry({
     id: createId(),
     nameDe,
     nameEn,
+    nameEs,
     pdfs: sanitizeGuidePdfs(pdfs)
   });
   guideDb.unshift(record);
@@ -3028,12 +3050,13 @@ function addGuideEntry(nameDe, nameEn, pdfs) {
   renderGuideDb();
 }
 
-function updateGuideEntry(id, nameDe, nameEn, pdfs) {
+function updateGuideEntry(id, nameDe, nameEn, nameEs, pdfs) {
   const index = guideDb.findIndex((g) => g.id === id);
   if (index < 0) return;
   guideDb[index] = sanitizeGuideEntry(Object.assign({}, guideDb[index], {
     nameDe,
     nameEn,
+    nameEs,
     pdfs: sanitizeGuidePdfs(pdfs)
   }));
   persistGuideDb();
@@ -3046,6 +3069,7 @@ function startEditGuideEntry(id) {
   activeGuideDbId = id;
   if (el.guideNameDe) el.guideNameDe.value = entry.nameDe || "";
   if (el.guideNameEn) el.guideNameEn.value = entry.nameEn || "";
+  if (el.guideNameEs) el.guideNameEs.value = entry.nameEs || "";
   pendingGuidePdfs = sanitizeGuidePdfs(entry.pdfs);
   GUIDE_PDF_LANGS.forEach((lang) => {
     const input = el[`guidePdf${lang.charAt(0).toUpperCase()}${lang.slice(1)}`];
@@ -3237,9 +3261,10 @@ function loadSubmissions() {
         let canonKey = String(item.checkpointCanon || "").trim()
           || loc.de
           || loc.en
+          || loc.es
           || String(item.text || "").trim();
         if (!canonKey) canonKey = t("chk.unnamed");
-        const localesOut = loc.de || loc.en ? loc : normalizeCheckpointDef(canonKey);
+        const localesOut = loc.de || loc.en || loc.es ? loc : normalizeCheckpointDef(canonKey);
         return {
           checked: Boolean(item.checked),
           locales: localesOut,
@@ -4061,7 +4086,7 @@ function addChecklistItem(textOrLocales = "", checked = false, comment = "", pho
   checkbox.checked = checked;
   const locales = parseLocalesArg(textOrLocales);
   node._itemLocales = { ...locales };
-  const canon = String(checkpointCanon || "").trim() || locales.de || locales.en || "";
+  const canon = String(checkpointCanon || "").trim() || locales.de || locales.en || locales.es || "";
   if (canon) node.dataset.checkpointCanon = canon;
   node._itemLocales = mergeCheckpointRowLocalesWithTemplate(node);
   const display = itemDisplayLabelFromLocales(node._itemLocales).trim();
@@ -4478,7 +4503,8 @@ function buildSyncedChecklistItems(existingItems = [], nextCheckpointCanonList =
       const prev = normalizeCheckpointDef(previousItem.locales || previousItem.text, { explicit: true });
       mergedLocales = {
         de: prev.de || tplLocales.de,
-        en: prev.en || tplLocales.en
+        en: prev.en || tplLocales.en,
+        es: prev.es || tplLocales.es
       };
     }
     mergedLocales = normalizeCheckpointDef(mergedLocales, { explicit: true });
@@ -4561,6 +4587,7 @@ function renderTemplateZoneManager() {
       activeTemplateZoneEditId = zid;
       if (el.checkpointZoneNameDe) el.checkpointZoneNameDe.value = zone.nameDe || "";
       if (el.checkpointZoneNameEn) el.checkpointZoneNameEn.value = zone.nameEn || "";
+      if (el.checkpointZoneNameEs) el.checkpointZoneNameEs.value = zone.nameEs || "";
       if (el.checkpointZoneSaveButton) el.checkpointZoneSaveButton.textContent = t("cp.zoneUpdate");
     });
   });
@@ -4580,20 +4607,28 @@ function saveTemplateZone() {
   if (!template) return false;
   const nameDe = el.checkpointZoneNameDe ? el.checkpointZoneNameDe.value.trim() : "";
   const nameEn = el.checkpointZoneNameEn ? el.checkpointZoneNameEn.value.trim() : "";
-  if (!nameDe && !nameEn) {
+  const nameEs = el.checkpointZoneNameEs ? el.checkpointZoneNameEs.value.trim() : "";
+  if (!nameDe && !nameEn && !nameEs) {
     showToast(t("toast.zoneNameRequired"));
     return false;
   }
+  const fallback = nameDe || nameEn || nameEs;
   if (!Array.isArray(template.zones)) template.zones = [];
   if (activeTemplateZoneEditId) {
     const zone = template.zones.find((z) => z.id === activeTemplateZoneEditId);
     if (zone) {
-      zone.nameDe = nameDe || nameEn;
-      zone.nameEn = nameEn || nameDe;
+      zone.nameDe = nameDe || fallback;
+      zone.nameEn = nameEn || fallback;
+      zone.nameEs = nameEs || fallback;
     }
   } else {
-    const id = uniqueZoneIdForTemplate(template, slugifyTemplateZoneId(nameDe || nameEn));
-    template.zones.push({ id, nameDe: nameDe || nameEn, nameEn: nameEn || nameDe });
+    const id = uniqueZoneIdForTemplate(template, slugifyTemplateZoneId(fallback));
+    template.zones.push({
+      id,
+      nameDe: nameDe || fallback,
+      nameEn: nameEn || fallback,
+      nameEs: nameEs || fallback
+    });
   }
   persistChecklistTemplates();
   resetTemplateZoneForm();
@@ -4654,6 +4689,7 @@ function wireCheckpointManagerRow(row, item, index) {
     const def = normalizeCheckpointDef(item, { explicit: true });
     if (el.checkpointNameDe) el.checkpointNameDe.value = def.de;
     if (el.checkpointNameEn) el.checkpointNameEn.value = def.en;
+    if (el.checkpointNameEs) el.checkpointNameEs.value = def.es;
     if (el.checkpointHausZone && templateUsesZones(template)) {
       el.checkpointHausZone.value = checkpointZoneFromDef(item, template);
     }
@@ -4752,7 +4788,8 @@ function renderCheckpointManager() {
 function saveCheckpoint() {
   const deIn = el.checkpointNameDe ? el.checkpointNameDe.value.trim() : "";
   const enIn = el.checkpointNameEn ? el.checkpointNameEn.value.trim() : "";
-  if (!deIn && !enIn) {
+  const esIn = el.checkpointNameEs ? el.checkpointNameEs.value.trim() : "";
+  if (!deIn && !enIn && !esIn) {
     showToast(t("toast.cpEnter"));
     return false;
   }
@@ -4763,7 +4800,7 @@ function saveCheckpoint() {
   if (!list) return false;
 
   let oldCanon = "";
-  const nextDef = normalizeCheckpointDef({ de: deIn, en: enIn }, { explicit: true });
+  const nextDef = normalizeCheckpointDef({ de: deIn, en: enIn, es: esIn }, { explicit: true });
 
   const dedupeDe = nextDef.de.trim().toLowerCase();
   let zoneForDedupe = "";
@@ -4778,7 +4815,9 @@ function saveCheckpoint() {
     if (templateUsesZones(template) && checkpointZoneFromDef(it, template) !== zoneForDedupe) return false;
     const o = normalizeCheckpointDef(it, { explicit: true });
     if (dedupeDe) return o.de.trim().toLowerCase() === dedupeDe;
-    return o.en.trim().toLowerCase() === nextDef.en.trim().toLowerCase();
+    const dedupeEn = nextDef.en.trim().toLowerCase();
+    if (dedupeEn) return o.en.trim().toLowerCase() === dedupeEn;
+    return o.es.trim().toLowerCase() === nextDef.es.trim().toLowerCase();
   });
   if (duplicateIndex >= 0) {
     showToast(t("toast.cpDup"));
@@ -4871,8 +4910,8 @@ function collectForm(status) {
       Object.assign({}, merged, { [lang]: edited }),
       { explicit: true }
     );
-    const canon = String(item.dataset.checkpointCanon || "").trim() || normalized.de || normalized.en || "";
-    const textFallback = normalized.de || normalized.en || edited || t("chk.unnamed");
+    const canon = String(item.dataset.checkpointCanon || "").trim() || normalized.de || normalized.en || normalized.es || "";
+    const textFallback = normalized.de || normalized.en || normalized.es || edited || t("chk.unnamed");
     const commentInput = item.querySelector(".item-comment-input");
     const checkInput = item.querySelector("input[type='checkbox']") || item.querySelector("input");
     return {
@@ -10536,16 +10575,17 @@ if (el.guideDbForm) {
     if (!hasFullChefCapabilities()) return;
     const nameDe = el.guideNameDe ? el.guideNameDe.value.trim() : "";
     const nameEn = el.guideNameEn ? el.guideNameEn.value.trim() : "";
+    const nameEs = el.guideNameEs ? el.guideNameEs.value.trim() : "";
     const pdfs = sanitizeGuidePdfs(pendingGuidePdfs);
     if (!guideHasAnyPdf(pdfs)) {
       showToast(t("toast.guidePdfRequired"));
       return;
     }
     if (activeGuideDbId) {
-      updateGuideEntry(activeGuideDbId, nameDe, nameEn, pdfs);
+      updateGuideEntry(activeGuideDbId, nameDe, nameEn, nameEs, pdfs);
       showToast(t("toast.guideUpd"));
     } else {
-      addGuideEntry(nameDe, nameEn, pdfs);
+      addGuideEntry(nameDe, nameEn, nameEs, pdfs);
       showToast(t("toast.guideAdd"));
     }
     resetGuideDbForm();
@@ -10714,7 +10754,8 @@ function populateLocaleSelectOptions(sel) {
   const cur = WC.getLocale();
   sel.innerHTML = [
     `<option value="de">${escapeHtml(WC.t("lang.optionDe"))}</option>`,
-    `<option value="en">${escapeHtml(WC.t("lang.optionEn"))}</option>`
+    `<option value="en">${escapeHtml(WC.t("lang.optionEn"))}</option>`,
+    `<option value="es">${escapeHtml(WC.t("lang.optionEs"))}</option>`
   ].join("");
   sel.value = cur;
 }

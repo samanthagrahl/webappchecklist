@@ -23,6 +23,7 @@
     "lang.sidebarAria": ["Sprache der Oberfläche", "Interface language"],
     "lang.optionDe": ["🇩🇪 Deutsch", "🇩🇪 Deutsch"],
     "lang.optionEn": ["🇬🇧 English", "🇬🇧 English"],
+    "lang.optionEs": ["🇪🇸 Español", "🇪🇸 Español"],
     "common.emDash": ["—", "—"],
     "sidebar.brandLine1": ["Immobiliencheck", "Property Check"],
     "sidebar.brandLine2": ["Prüfbericht von Immobilien", "Property inspection reports"],
@@ -225,6 +226,7 @@
     ],
     "guide.phNameDe": ["Bezeichnung (Deutsch)", "Title (German)"],
     "guide.phNameEn": ["Bezeichnung (Englisch)", "Title (English)"],
+    "guide.phNameEs": ["Bezeichnung (Spanisch)", "Title (Spanish)"],
     "guide.pdfDe": ["PDF Deutsch", "PDF German"],
     "guide.pdfEn": ["PDF Englisch", "PDF English"],
     "guide.pdfEs": ["PDF Spanisch", "PDF Spanish"],
@@ -233,7 +235,7 @@
     "guide.save": ["Anleitung speichern", "Save instruction"],
     "guide.saveUpdate": ["Anleitung aktualisieren", "Update instruction"],
     "guide.empty": ["Noch keine Anleitungen hinterlegt.", "No instructions yet."],
-    "guide.namesSub": ["DE: {de} · EN: {en}", "DE: {de} · EN: {en}"],
+    "guide.namesSub": ["DE: {de} · EN: {en} · ES: {es}", "DE: {de} · EN: {en} · ES: {es}"],
     "guide.downloadDe": ["PDF DE", "PDF DE"],
     "guide.downloadEn": ["PDF EN", "PDF EN"],
     "guide.downloadEs": ["PDF ES", "PDF ES"],
@@ -417,8 +419,10 @@
     "cp.namePh": ["Neuen Prüfpunkt eingeben", "Enter new checkpoint"],
     "cp.fieldDeLbl": ["Deutsch", "German"],
     "cp.fieldEnLbl": ["Englisch", "English"],
+    "cp.fieldEsLbl": ["Spanisch", "Spanish"],
     "cp.nameDePh": ["Bezeichnung (Deutsch)", "Label (German)"],
     "cp.nameEnPh": ["Bezeichnung (Englisch)", "Label (English)"],
+    "cp.nameEsPh": ["Bezeichnung (Spanisch)", "Label (Spanish)"],
     "cp.saveNew": ["Prüfpunkt speichern", "Save checkpoint"],
     "cp.update": ["Prüfpunkt aktualisieren", "Update checkpoint"],
     "cp.empty": ["Noch keine Prüfpunkte vorhanden.", "No checkpoints yet."],
@@ -432,6 +436,7 @@
     "cp.zonesEmpty": ["Noch keine Bereiche angelegt.", "No areas defined yet."],
     "cp.zoneNameDePh": ["Name des Bereichs (Deutsch)", "Area name (German)"],
     "cp.zoneNameEnPh": ["Name des Bereichs (Englisch)", "Area name (English)"],
+    "cp.zoneNameEsPh": ["Name des Bereichs (Spanisch)", "Area name (Spanish)"],
     "cp.zoneAdd": ["Bereich hinzufügen", "Add area"],
     "cp.zoneUpdate": ["Bereich aktualisieren", "Update area"],
     "cp.zoneDeleteConfirm": [
@@ -870,29 +875,38 @@
   function buildMessages() {
     var de = {};
     var en = {};
+    var es = {};
+    var pairsEs = typeof global.PAIRS_ES === "object" && global.PAIRS_ES ? global.PAIRS_ES : {};
     Object.keys(PAIRS).forEach(function (key) {
       var pair = PAIRS[key];
       de[key] = pair[0];
       en[key] = pair[1];
+      if (typeof pairsEs[key] === "string") es[key] = pairsEs[key];
+      else es[key] = pair[1];
     });
-    return { de: de, en: en };
+    Object.keys(pairsEs).forEach(function (key) {
+      if (typeof es[key] !== "string") es[key] = pairsEs[key];
+    });
+    return { de: de, en: en, es: es };
   }
 
   var MSGS = buildMessages();
-  /** @type {"de"|"en"} */
-  var locale =
-    typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_KEY) === "en" ? "en" : "de";
+  /** @type {"de"|"en"|"es"} */
+  var storedLocale = typeof localStorage !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+  var locale = storedLocale === "en" || storedLocale === "es" ? storedLocale : "de";
 
   function getLocale() {
     return locale;
   }
 
   function intlLocale() {
-    return locale === "en" ? "en-GB" : "de-DE";
+    if (locale === "en") return "en-GB";
+    if (locale === "es") return "es-ES";
+    return "de-DE";
   }
 
   function intlLang() {
-    return locale === "en" ? "en" : "de";
+    return locale;
   }
 
   function interpolate(str, vars) {
@@ -930,13 +944,13 @@
   }
 
   function setUiLocale(next) {
-    if (next !== "de" && next !== "en") return;
+    if (next !== "de" && next !== "en" && next !== "es") return;
     locale = next;
     try {
       localStorage.setItem(STORAGE_KEY, locale);
     } catch (err) {}
     if (typeof document !== "undefined") {
-      document.documentElement.lang = locale === "en" ? "en" : "de";
+      document.documentElement.lang = locale;
       document.title = t("meta.title");
       applyToScope(document);
       var selAuth = typeof global.__wcLocaleSelectAuth !== "undefined" ? global.__wcLocaleSelectAuth : null;
@@ -991,6 +1005,6 @@
 
   /* Erste Auszeichnung ohne Hook (vor app.js render) */
   if (typeof document !== "undefined" && document.documentElement) {
-    document.documentElement.lang = locale === "en" ? "en" : "de";
+    document.documentElement.lang = locale;
   }
 })(typeof window !== "undefined" ? window : globalThis);
