@@ -16,7 +16,7 @@
         }
       }());
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260605-bg-cool" />
+    <link rel="stylesheet" href="styles.css?v=20260605-checklist-templates" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -78,7 +78,7 @@
           <button class="module-tab" type="button" data-section="guideDb" id="guideDbTab" data-i18n="nav.guideDb">Betriebsanleitungen</button>
           <button class="module-tab" type="button" data-section="calendar" data-i18n="nav.calendar">Kalender</button>
           <button class="module-tab" type="button" data-section="worktime" id="worktimeTab" data-i18n="nav.worktime">Arbeitszeiten</button>
-          <button class="module-tab" type="button" data-section="checkpoints" id="checkpointTab" data-i18n="nav.checkpoints">Prüfpunkte</button>
+          <button class="module-tab" type="button" data-section="checkpoints" id="checkpointTab" data-i18n="nav.checkpoints">Checklisten und Prüfpunkte</button>
           <button class="module-tab hidden" type="button" data-section="staffAdmin" id="staffAdminTab" data-i18n="nav.staffAdmin">Mitarbeiter</button>
         </nav>
 
@@ -746,12 +746,22 @@
 
         <section class="worktime-panel hidden" id="checkpointPanel">
           <div class="section-heading">
-            <h2 data-i18n="cp.heading">Prüfpunkte</h2>
+            <h2 data-i18n="cp.heading">Checklisten und Prüfpunkte</h2>
           </div>
           <div class="checkpoint-manager">
+            <div class="checkpoint-template-create">
+              <h3 class="checkpoint-template-create-title" data-i18n="cp.tplSection">Neue Checkliste anlegen</h3>
+              <div class="checkpoint-template-create-row">
+                <input id="checkpointNewTemplateName" type="text" autocomplete="off" data-i18n-placeholder="cp.tplNamePh" />
+                <button class="primary-button" id="checkpointCreateTemplateButton" type="button" data-i18n="cp.tplCreate">Checkliste anlegen</button>
+              </div>
+            </div>
             <label class="checkpoint-manager-template-label">
               <span data-i18n="cp.manageTpl">Checkliste bearbeiten</span>
-              <select id="checkpointManagerTemplateSelect" data-i18n-aria="cp.manageTplAria"></select>
+              <div class="checkpoint-template-select-row">
+                <select id="checkpointManagerTemplateSelect" data-i18n-aria="cp.manageTplAria"></select>
+                <button class="danger-button" id="checkpointDeleteTemplateButton" type="button" data-i18n="cp.tplDelete">Checkliste löschen</button>
+              </div>
             </label>
             <div class="checkpoint-access-block">
               <label class="checkbox-line checkpoint-access-all">
@@ -821,6 +831,6 @@
     <script src="vendor/xlsx.full.min.js?v=20260522"></script>
     <script src="i18n.js?v=20260519-cloud"></script>
     <script src="js/immobiliencheck-cloud.js?v=20260605-demo-hint"></script>
-    <script src="app.js?v=20260605-demo-employee"></script>
+    <script src="app.js?v=20260605-checklist-templates"></script>
   </body>
 </html>

@@ -1918,6 +1918,34 @@ select.boss-status-select {
   padding: 14px;
 }
 
+.checkpoint-template-create {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.checkpoint-template-create-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.checkpoint-template-create-row,
+.checkpoint-template-select-row {
+  display: grid;
+  gap: 8px;
+  align-items: end;
+}
+
+.checkpoint-template-create-row {
+  grid-template-columns: 1fr auto;
+}
+
+.checkpoint-template-select-row {
+  grid-template-columns: 1fr auto;
+}
+
 .checkpoint-manager-template-label {
   display: grid;
   gap: 6px;

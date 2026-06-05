@@ -929,6 +929,159 @@ function persistChecklistTemplates() {
   appStorageSet(checklistTemplatesKey, JSON.stringify(checklistTemplates));
 }
 
+function slugifyChecklistTemplateId(name) {
+  const base = String(name || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return base || `checklist_${Date.now()}`;
+}
+
+function uniqueChecklistTemplateId(baseId) {
+  const stem = String(baseId || "").trim() || `checklist_${Date.now()}`;
+  if (!checklistTemplates.some((item) => item.id === stem)) return stem;
+  let suffix = 2;
+  while (checklistTemplates.some((item) => item.id === `${stem}_${suffix}`)) suffix += 1;
+  return `${stem}_${suffix}`;
+}
+
+function refreshChecklistTemplateConsumers() {
+  populateCustomerCheckpointTemplateSelect();
+  ensureCheckpointManagerTemplateSelectValues(true);
+  refreshCheckpointStaffUi();
+  if (el.staffTemplateAccess) {
+    const excludeUsername = el.staffUsername && el.staffUsername.disabled ? el.staffUsername.value : "";
+    renderStaffAdminCheckboxGroups(
+      readStaffAdminCheckboxValues(el.staffManageEmployees),
+      readStaffAdminCheckboxValues(el.staffTemplateAccess),
+      excludeUsername
+    );
+  }
+  if (activeSection === "calendar") renderCalendarChecklistTemplateCheckboxes();
+  if (activeSection === "customerDb") renderCustomerDb();
+  populateChecklistFormTemplateSelect(!activeChecklistId);
+  bossChecklistFilterSignature = "";
+  renderLists();
+}
+
+function createChecklistTemplate(displayName) {
+  const name = String(displayName || "").trim();
+  if (!name) {
+    showToast(t("toast.cpTplNameRequired"));
+    return false;
+  }
+  const id = uniqueChecklistTemplateId(slugifyChecklistTemplateId(name));
+  checklistTemplates.push({
+    id,
+    name,
+    checkpoints: [],
+    assignedEmployeeUsernames: []
+  });
+  persistChecklistTemplates();
+  pendingCustomerCheckpointSets[id] = [];
+  checkpointManagerTemplateId = id;
+  activeCheckpointEditIndex = -1;
+  resetCheckpointForm();
+  if (el.checkpointNewTemplateName) el.checkpointNewTemplateName.value = "";
+  refreshChecklistTemplateConsumers();
+  showToast(t("toast.cpTplCreated"));
+  return true;
+}
+
+function removeChecklistTemplateIdFromCustomerDb(templateId) {
+  let changed = false;
+  customerDb.forEach((entry) => {
+    if (!entry || !entry.checkpointSets || !Object.prototype.hasOwnProperty.call(entry.checkpointSets, templateId)) return;
+    delete entry.checkpointSets[templateId];
+    changed = true;
+  });
+  if (changed) persistCustomerDb();
+  delete pendingCustomerCheckpointSets[templateId];
+}
+
+function removeChecklistTemplateIdFromUsers(templateId) {
+  users.forEach((user) => {
+    if (!Array.isArray(user.allowedChecklistTemplateIds)) return;
+    const next = user.allowedChecklistTemplateIds.filter((id) => id !== templateId);
+    if (next.length !== user.allowedChecklistTemplateIds.length) user.allowedChecklistTemplateIds = next;
+  });
+}
+
+function removeChecklistTemplateIdFromSubmissions(templateId) {
+  const before = submissions.length;
+  submissions = submissions.filter((entry) => {
+    if (!entry) return false;
+    if (entry.status !== "draft") return true;
+    const tid = entry.checklistTemplateId || HAUS_CHECKLIST_TEMPLATE_ID;
+    return tid !== templateId;
+  });
+  if (submissions.length !== before) appStorageSet(storageKey, JSON.stringify(submissions));
+}
+
+function removeChecklistTemplateIdFromSchedules(templateId) {
+  let changed = false;
+  Object.keys(staffSchedule).forEach((dateKey) => {
+    const entries = staffSchedule[dateKey];
+    if (!Array.isArray(entries)) return;
+    entries.forEach((entry) => {
+      if (!entry || isRecurringOccurrenceSkipEntry(entry) || isWorkOrderAssignment(entry)) return;
+      const rawIds = Array.isArray(entry.checklistTemplateIds) && entry.checklistTemplateIds.length
+        ? entry.checklistTemplateIds
+        : [entry.checklistTemplateId || HAUS_CHECKLIST_TEMPLATE_ID];
+      if (!rawIds.includes(templateId)) return;
+      const ids = sanitizeChecklistTemplateIdsArray(rawIds.filter((id) => id !== templateId));
+      entry.checklistTemplateIds = ids;
+      entry.checklistTemplateId = ids[0];
+      changed = true;
+    });
+  });
+  recurringScheduleRules.forEach((rule) => {
+    if (!rule) return;
+    const rawIds = Array.isArray(rule.checklistTemplateIds) && rule.checklistTemplateIds.length
+      ? rule.checklistTemplateIds
+      : [rule.checklistTemplateId || HAUS_CHECKLIST_TEMPLATE_ID];
+    if (!rawIds.includes(templateId)) return;
+    const ids = sanitizeChecklistTemplateIdsArray(rawIds.filter((id) => id !== templateId));
+    rule.checklistTemplateIds = ids;
+    rule.checklistTemplateId = ids[0];
+    changed = true;
+  });
+  if (changed) {
+    persistSchedule();
+    persistRecurringScheduleRules();
+  }
+}
+
+function deleteChecklistTemplate(templateId) {
+  if (checklistTemplates.length <= 1) {
+    showToast(t("toast.cpTplMinOne"));
+    return false;
+  }
+  const tpl = checklistTemplates.find((item) => item.id === templateId);
+  if (!tpl) return false;
+  if (!window.confirm(t("cp.tplDeleteConfirm", { name: tpl.name }))) return false;
+  persistCheckpointTemplateAccessFromInputs();
+  checklistTemplates = checklistTemplates.filter((item) => item.id !== templateId);
+  persistChecklistTemplates();
+  removeChecklistTemplateIdFromCustomerDb(templateId);
+  removeChecklistTemplateIdFromSchedules(templateId);
+  removeChecklistTemplateIdFromSubmissions(templateId);
+  removeChecklistTemplateIdFromUsers(templateId);
+  migrateScheduleTemplateIdsInPlace();
+  if (checkpointManagerTemplateId === templateId) {
+    checkpointManagerTemplateId = checklistTemplates[0] ? checklistTemplates[0].id : HAUS_CHECKLIST_TEMPLATE_ID;
+  }
+  activeCheckpointEditIndex = -1;
+  resetCheckpointForm();
+  refreshChecklistTemplateConsumers();
+  if (activeSection === "calendar") renderCalendar();
+  showToast(t("toast.cpTplDeleted"));
+  return true;
+}
+
 function getChecklistTemplateById(id) {
   const wanted = id || HAUS_CHECKLIST_TEMPLATE_ID;
   return checklistTemplates.find((item) => item.id === wanted) || checklistTemplates[0] || null;
@@ -1321,6 +1474,9 @@ const el = {
   checkpointHausZoneRow: document.getElementById("checkpointHausZoneRow"),
   checkpointSaveButton: document.getElementById("checkpointSaveButton"),
   checkpointManagerTemplateSelect: document.getElementById("checkpointManagerTemplateSelect"),
+  checkpointNewTemplateName: document.getElementById("checkpointNewTemplateName"),
+  checkpointCreateTemplateButton: document.getElementById("checkpointCreateTemplateButton"),
+  checkpointDeleteTemplateButton: document.getElementById("checkpointDeleteTemplateButton"),
   checkpointEmployeeAccess: document.getElementById("checkpointEmployeeAccess"),
   checkpointAccessAllEmployees: document.getElementById("checkpointAccessAllEmployees"),
   checkpointAccessHintRestricted: document.getElementById("checkpointAccessHintRestricted"),
@@ -3747,9 +3903,9 @@ function persistCheckpointTemplateAccessFromInputs() {
   persistChecklistTemplates();
 }
 
-function ensureCheckpointManagerTemplateSelectValues() {
+function ensureCheckpointManagerTemplateSelectValues(force) {
   if (!el.checkpointManagerTemplateSelect) return;
-  if (!el.checkpointManagerTemplateSelect.options.length || el.checkpointManagerTemplateSelect.options.length !== checklistTemplates.length) {
+  if (force || !el.checkpointManagerTemplateSelect.options.length || el.checkpointManagerTemplateSelect.options.length !== checklistTemplates.length) {
     el.checkpointManagerTemplateSelect.innerHTML = checklistTemplates.map((t) => `
       <option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>
     `).join("");
@@ -9604,6 +9760,27 @@ if (el.checkpointManagerTemplateSelect) {
     activeCheckpointEditIndex = -1;
     resetCheckpointForm();
     refreshCheckpointStaffUi();
+  });
+}
+if (el.checkpointCreateTemplateButton) {
+  el.checkpointCreateTemplateButton.addEventListener("click", () => {
+    const name = el.checkpointNewTemplateName ? el.checkpointNewTemplateName.value : "";
+    createChecklistTemplate(name);
+  });
+}
+if (el.checkpointNewTemplateName) {
+  el.checkpointNewTemplateName.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    createChecklistTemplate(el.checkpointNewTemplateName.value);
+  });
+}
+if (el.checkpointDeleteTemplateButton) {
+  el.checkpointDeleteTemplateButton.addEventListener("click", () => {
+    const templateId = el.checkpointManagerTemplateSelect
+      ? el.checkpointManagerTemplateSelect.value
+      : checkpointManagerTemplateId;
+    deleteChecklistTemplate(templateId || checkpointManagerTemplateId);
   });
 }
 if (el.checkpointAccessAllEmployees) {
