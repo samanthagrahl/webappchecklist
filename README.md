@@ -9,9 +9,19 @@ Eine Webapp für Immobilienprüfungen und Handwerksbetriebe:
 - Ohne SMTP: E-Mail-Entwurf (`mailto:`) oder PDF-Download als Fallback.
 - Jeder Prüfpunkt kann einen eigenen Kurzkommentar enthalten.
 
-## Benutzer
+## Demo online (GitHub Pages)
 
-Zugänge werden im Backend bzw. unter **Mitarbeiter** (voller Chef) verwaltet. Die Anmeldemaske zeigt keine Demo-Zugänge.
+**URL:** https://samanthagrahl.github.io/webappchecklist/
+
+- Statische Demo ohne Server (Daten nur im Browser)
+- Demo-Zugang auf der Login-Seite: **chef / 123**
+- Wird bei jedem Push auf `main` automatisch deployed
+
+> Die Demo-Zugänge sind für die Entwicklungsphase gedacht und werden vor Go-Live wieder entfernt.
+
+## Benutzer (Produktion)
+
+Zugänge werden im Backend bzw. unter **Mitarbeiter** (voller Chef) verwaltet.
 
 ## Lokal testen (optional)
 
@@ -61,9 +71,10 @@ Wichtig für automatischen Kundenbericht:
 - `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 - App nur über HTTPS-Domain öffnen (gleiche Origin wie API)
 
-## GitHub Pages (nur Demo, ohne Cloud)
+## GitHub Pages
 
-Statisches Hosting ohne Server — **kein** automatischer SMTP-Versand, nur `localStorage` und `mailto:`.
+Deployment läuft über [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml).  
+In den Repo-Einstellungen unter **Settings → Pages → Build and deployment → Source: GitHub Actions** muss einmalig „GitHub Actions“ gewählt sein (falls noch nicht aktiv).
 
 ## Hinweis zur Datenspeicherung
 
