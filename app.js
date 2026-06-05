@@ -103,7 +103,8 @@ const putzplanCheckpointDefaults = [
 ];
 /** Nur Offline-Demo ohne Cloud-Backend — Produktion nutzt die API. */
 const DEFAULT_USERS = [
-  { username: "chef", password: "123", role: "boss", label: "Chef" }
+  { username: "chef", password: "123", role: "boss", label: "Chef" },
+  { username: "mitarbeiter", password: "123", role: "employee", label: "Mitarbeiter" }
 ];
 /** Aktives Verzeichnis (Cloud-API oder Offline-Fallback). */
 let users = DEFAULT_USERS.map((u) => Object.assign({}, u));

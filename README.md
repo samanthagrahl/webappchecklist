@@ -14,7 +14,7 @@ Eine Webapp für Immobilienprüfungen und Handwerksbetriebe:
 **URL:** https://samanthagrahl.github.io/webappchecklist/
 
 - Statische Demo ohne Server (Daten nur im Browser)
-- Demo-Zugang auf der Login-Seite: **chef / 123**
+- Demo-Zugänge auf der Login-Seite: **chef / 123** (Chef), **mitarbeiter / 123** (Mitarbeiter)
 - Wird bei jedem Push auf `main` automatisch deployed
 
 > Die Demo-Zugänge sind für die Entwicklungsphase gedacht und werden vor Go-Live wieder entfernt.

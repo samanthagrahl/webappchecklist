@@ -5,7 +5,8 @@ const { getPool } = require("./pool");
 
 /** Nur für lokale Entwicklung — Produktion: upsert-boss-user pro Kunden-Instanz. */
 const DEFAULT_USERS = [
-  { username: "chef", password: "123", role: "boss", label: "Chef", manage: [], templates: [] }
+  { username: "chef", password: "123", role: "boss", label: "Chef", manage: [], templates: [] },
+  { username: "mitarbeiter", password: "123", role: "employee", label: "Mitarbeiter", manage: [], templates: [] }
 ];
 
 async function upsertUser(client, user, rounds) {
