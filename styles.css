@@ -1924,14 +1924,39 @@ select.boss-status-select {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
+.cp-manager-card > summary.cp-manager-card-head {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cp-manager-card > summary.cp-manager-card-head::-webkit-details-marker {
+  display: none;
+}
+
 .cp-manager-card-head {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   gap: 12px;
   align-items: start;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--line);
   background: #f8fafc;
+}
+
+.cp-manager-card[open] > summary.cp-manager-card-head {
+  border-bottom: 1px solid var(--line);
+}
+
+.cp-manager-card-toggle {
+  align-self: center;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.cp-manager-card[open] .cp-manager-card-toggle {
+  transform: rotate(90deg);
 }
 
 .cp-manager-step {

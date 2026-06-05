@@ -16,7 +16,7 @@
         }
       }());
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260605-cp-sections" />
+    <link rel="stylesheet" href="styles.css?v=20260605-cp-collapse" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -749,14 +749,15 @@
             <h2 data-i18n="cp.heading">Checkliste und Prüfpunkte</h2>
           </div>
           <div class="checkpoint-manager">
-            <section class="cp-manager-card cp-manager-card--checklist">
-              <header class="cp-manager-card-head">
+            <details class="cp-manager-card cp-manager-card--checklist" open>
+              <summary class="cp-manager-card-head">
                 <span class="cp-manager-step" aria-hidden="true">1</span>
                 <div class="cp-manager-card-head-text">
                   <h3 class="cp-manager-card-title" data-i18n="cp.stepChecklist">Checkliste</h3>
                   <p class="cp-manager-card-lead" data-i18n="cp.stepChecklistDesc">Neue Checkliste anlegen oder eine bestehende auswählen und freigeben.</p>
                 </div>
-              </header>
+                <span class="cp-manager-card-toggle" aria-hidden="true">▸</span>
+              </summary>
               <div class="cp-manager-card-body">
                 <div class="checkpoint-template-create">
                   <h4 class="checkpoint-subblock-title" data-i18n="cp.tplSection">Neue Checkliste anlegen</h4>
@@ -781,16 +782,17 @@
                   <div id="checkpointEmployeeAccess" class="checkpoint-employee-access"></div>
                 </div>
               </div>
-            </section>
+            </details>
 
-            <section class="cp-manager-card cp-manager-card--zones" id="checkpointZonesBlock">
-              <header class="cp-manager-card-head">
+            <details class="cp-manager-card cp-manager-card--zones" id="checkpointZonesBlock">
+              <summary class="cp-manager-card-head">
                 <span class="cp-manager-step" aria-hidden="true">2</span>
                 <div class="cp-manager-card-head-text">
                   <h3 class="cp-manager-card-title" data-i18n="cp.stepZones">Bereiche (optional)</h3>
                   <p class="cp-manager-card-lead" data-i18n="cp.zonesHint">Bereiche sind optional. Wenn Sie welche anlegen, können Prüfpunkte zugeordnet und im Kalender gefiltert werden.</p>
                 </div>
-              </header>
+                <span class="cp-manager-card-toggle" aria-hidden="true">▸</span>
+              </summary>
               <div class="cp-manager-card-body">
                 <div id="checkpointZoneList" class="checkpoint-zone-list"></div>
                 <form class="checkpoint-zone-form" id="checkpointZoneForm">
@@ -805,16 +807,17 @@
                   <button class="secondary-button" id="checkpointZoneSaveButton" type="submit" data-i18n="cp.zoneAdd">Bereich hinzufügen</button>
                 </form>
               </div>
-            </section>
+            </details>
 
-            <section class="cp-manager-card cp-manager-card--checkpoints">
-              <header class="cp-manager-card-head">
+            <details class="cp-manager-card cp-manager-card--checkpoints" open>
+              <summary class="cp-manager-card-head">
                 <span class="cp-manager-step" aria-hidden="true">3</span>
                 <div class="cp-manager-card-head-text">
                   <h3 class="cp-manager-card-title" data-i18n="cp.stepCheckpoints">Prüfpunkte</h3>
                   <p class="cp-manager-card-lead" data-i18n="cp.stepCheckpointsDesc">Einzelne Aufgaben für die gewählte Checkliste anlegen und verwalten.</p>
                 </div>
-              </header>
+                <span class="cp-manager-card-toggle" aria-hidden="true">▸</span>
+              </summary>
               <div class="cp-manager-card-body">
                 <form class="checkpoint-form" id="checkpointForm">
                   <div class="checkpoint-form-row">
@@ -837,7 +840,7 @@
                 </form>
                 <div class="checkpoint-list" id="checkpointList"></div>
               </div>
-            </section>
+            </details>
           </div>
         </section>
       </main>
